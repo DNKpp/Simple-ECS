@@ -11,8 +11,13 @@
 
 #include <vector>
 #include <memory>
+#include <string>
+#include <typeinfo>
+#include <mutex>
+#include <shared_mutex>
 
 #include "System.hpp"
+#include "Entity.hpp"
 
 namespace secs
 {
@@ -22,6 +27,8 @@ namespace secs
 		template <class TSystem>
 		constexpr void registerSystem(TSystem&& system)
 		{
+			std::scoped_lock systemLock{ m_SystemMx };
+
 			if (auto itr = findSystemStorage<SystemComponentType<TSystem>>(*this);
 				itr != std::end(m_Systems))
 			{
@@ -32,16 +39,91 @@ namespace secs
 		}
 
 		template <class TComponent>
-		constexpr const SystemBase<TComponent>* getSystem() const noexcept
+		constexpr const SystemBase<TComponent>* getSystemPtr() const noexcept
 		{
+			std::shared_lock systemLock{ m_SystemMx };
+
 			auto itr = findSystemStorage<TComponent>(*this);
 			return itr != std::end(m_Systems) ? static_cast<SystemBase<TComponent>*>(itr->system.get()) : nullptr;
 		}
 
 		template <class TComponent>
-		constexpr SystemBase<TComponent>* getSystem() noexcept
+		constexpr SystemBase<TComponent>* getSystemPtr() noexcept
 		{
 			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).getSystem<TComponent>());
+		}
+
+		template <class TComponent>
+		constexpr const SystemBase<TComponent>& getSystem() const
+		{
+			if (auto ptr = getSystemPtr<TComponent>())
+				return *ptr;
+			using namespace std::string_literals;
+			throw SystemError("System not found: "s + typeid(SystemBase<TComponent>).name());
+		}
+
+		template <class TComponent>
+		constexpr SystemBase<TComponent>& getSystem()
+		{
+			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).getSystem<TComponent>());
+		}
+
+		template <class... TComponent>
+		constexpr Entity& createEntity() noexcept
+		{
+			std::scoped_lock entityLock{ m_EntityMx };
+
+			auto entityUID = m_NextUID++;
+			m_Entities.emplace_back(std::make_unique<Entity>(entityUID, (getSystem<TComponent>().createComponent(entityUID), ...)));
+			return *m_Entities.back();
+		}
+
+		void destroyEntityLater(UID uid) noexcept
+		{
+			std::scoped_lock lock{ m_DestructableEntityMx };
+			m_DestructableEntityUIDs.emplace_back(uid);
+		}
+
+		const Entity* findEntityPtr(UID uid) const noexcept
+		{
+			std::shared_lock entityLock{ m_EntityMx };
+			auto itr = findEntityItr(*this, uid);
+			return itr != std::end(m_Entities) ? &**itr : nullptr;
+		}
+
+		Entity* findEntityPtr(UID uid) noexcept
+		{
+			return const_cast<Entity*>(std::as_const(*this).findEntityPtr(uid));
+		}
+
+		const Entity& findEntity(UID uid) const
+		{
+			if (auto ptr = findEntityPtr(uid))
+				return *ptr;
+			using namespace std::string_literals;
+			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
+		}
+
+		Entity& findEntity(UID uid)
+		{
+			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
+		}
+
+		void execEntityDestruction()
+		{
+			auto destructableEntityUIDs = takeDestructableEntityUIDs();
+			if (std::empty(destructableEntityUIDs))
+				return;
+
+			std::sort(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs));
+			destructableEntityUIDs.erase(std::unique(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs)), std::end(destructableEntityUIDs));
+
+			std::scoped_lock entityLock{ m_EntityMx };
+			auto oldEntites = std::move(m_Entities);
+
+			std::set_difference(std::make_move_iterator(std::begin(oldEntites)), std::make_move_iterator(std::end(oldEntites)),
+				std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs),
+				std::back_inserter(m_Entities), LessEntityByUID{});
 		}
 
 	private:
@@ -57,6 +139,7 @@ namespace secs
 			{
 			}
 		};
+		mutable std::shared_mutex m_SystemMx;
 		std::vector<SystemStorage> m_Systems;
 
 		template <class TSystem>
@@ -68,6 +151,31 @@ namespace secs
 			std::type_index typeIndex = typeid(std::decay_t<TComponent>);
 			return std::find_if(std::begin(world.m_Systems), std::end(world.m_Systems), [typeIndex](const auto& info) { return info.type == typeIndex; });
 		}
+
+		template <class TWorld>
+		static constexpr auto findEntityItr(TWorld&& world, UID uid) noexcept
+		{
+			if (auto itr = std::lower_bound(std::begin(world.m_Entities), std::end(world.m_Entities), uid, LessEntityByUID{});
+				itr != std::end(world.m_Entities) && (*itr)->getUID() == uid)
+			{
+				return itr;
+			}
+			return std::end(world.m_Entities);
+		}
+
+		std::vector<UID> takeDestructableEntityUIDs() noexcept
+		{
+			std::scoped_lock lock{ m_DestructableEntityMx };
+			auto tmp = std::move(m_DestructableEntityUIDs);
+			return tmp;
+		}
+
+		UID m_NextUID = 1;
+		mutable std::shared_mutex m_EntityMx;
+		std::vector<std::unique_ptr<Entity>> m_Entities;	// ptr is simply used to get a consistent memory space for each entity
+
+		mutable std::mutex m_DestructableEntityMx;
+		std::vector<UID> m_DestructableEntityUIDs;
 	};
 }
 
