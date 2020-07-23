@@ -44,10 +44,12 @@ namespace details
 		class ComponentHandle :
 			public AbstractComponentHandle
 		{
+			using Super = AbstractComponentHandle;
+
 		public:
 			constexpr ComponentHandle(UID uid, ComponentHolder& holder, TComponent& component) :
 				m_Holder(&holder),
-				AbstractComponentHandle(uid, component)
+				Super(uid, component)
 			{
 				assert(m_Holder);
 			}
@@ -55,17 +57,31 @@ namespace details
 			ComponentHandle(const ComponentHandle&) = delete;
 			ComponentHandle& operator =(const ComponentHandle&) = delete;
 
-			constexpr ComponentHandle(ComponentHandle&&) noexcept = default;
-			constexpr ComponentHandle& operator =(ComponentHandle&&) noexcept = default;
+			// ToDo: in cpp20
+			/*constexpr*/ ComponentHandle(ComponentHandle&& other) noexcept
+			{
+				*this = std::move(other);
+			}
+			// ToDo: in cpp20
+			/*constexpr*/ ComponentHandle& operator =(ComponentHandle&& other) noexcept
+			{
+				if (this != &other)
+				{
+					this->Super::operator =(std::move(other));
+					m_Holder = other.m_Holder;
+					other.reset();
+				}
+				return *this;
+			}
 
 			~ComponentHandle() noexcept override
 			{
-				if (getUID() != 0)
-				{
-					assert(m_Holder);
-					m_Holder->deleteComponent(getUID());
-					m_Holder = nullptr;
-				}
+				release();
+			}
+
+			constexpr const ComponentHolder* getComponentHolder() const noexcept
+			{
+				return m_Holder;
 			}
 
 			constexpr std::type_index getTypeInfo() const noexcept override
@@ -73,8 +89,25 @@ namespace details
 				return typeid(TComponent);
 			}
 
+			// ToDo: in cpp20
+			/*constexpr*/ void release() noexcept override
+			{
+				if (getUID() != 0)
+				{
+					assert(m_Holder);
+					m_Holder->deleteComponent(getUID());
+					reset();
+				}
+			}
+
 		private:
 			ComponentHolder* m_Holder;
+
+			constexpr void reset() noexcept
+			{
+				Super::reset();
+				m_Holder = nullptr;
+			}
 		};
 
 		ComponentHolder(const ComponentHolder&) = delete;
@@ -102,6 +135,21 @@ namespace details
 					return *component;
 			}
 			return nullptr;
+		}
+
+		constexpr std::size_t componentCount() const noexcept
+		{
+			return std::size(m_Components) - std::count(std::begin(m_Components), std::end(m_Components), std::nullopt);
+		}
+
+		constexpr std::size_t size() const noexcept
+		{
+			return std::size(m_Components);
+		}
+
+		constexpr bool empty() const noexcept
+		{
+			return std::empty(m_Components);
 		}
 
 	protected:

@@ -10,6 +10,7 @@
 #pragma once
 
 #include <cassert>
+#include <typeindex>
 #include "Typedefs.hpp"
 
 namespace secs
@@ -37,8 +38,12 @@ namespace secs
 		}
 
 		virtual std::type_index getTypeInfo() const noexcept = 0;
+		// ToDo: in cpp20
+		virtual /*constexpr*/ void release() noexcept = 0;
 
 	protected:
+		constexpr AbstractComponentHandle() noexcept = default;
+
 		template <class TComponent>
 		constexpr AbstractComponentHandle(UID uid, TComponent& component) noexcept :
 			m_UID{ uid },
@@ -47,14 +52,25 @@ namespace secs
 			assert(m_UID != 0 && m_RawPtr);
 		}
 
-		constexpr AbstractComponentHandle(AbstractComponentHandle&& other) noexcept :
-			m_UID{ other.m_UID },
-			m_RawPtr{ other.m_RawPtr }
+		// ToDo: in cpp20
+		/*constexpr*/ AbstractComponentHandle(AbstractComponentHandle&& other) noexcept
 		{
-			other.m_UID = 0;
-			other.m_RawPtr = nullptr;
+			*this = std::move(other);
 		}
-		constexpr AbstractComponentHandle& operator =(AbstractComponentHandle&&) noexcept = default;
+		// ToDo: in cpp20
+		/*constexpr*/ AbstractComponentHandle& operator =(AbstractComponentHandle&& other) noexcept
+		{
+			m_UID = other.m_UID;
+			m_RawPtr = other.m_RawPtr;
+			return *this;
+		}
+
+		// non-virtual is intended; just shadow in sub-class and call explicitly
+		constexpr void reset() noexcept
+		{
+			m_UID = 0;
+			m_RawPtr = 0;
+		}
 
 	private:
 		UID m_UID = 0;
