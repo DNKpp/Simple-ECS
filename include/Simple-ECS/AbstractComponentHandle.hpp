@@ -22,7 +22,6 @@ namespace secs
 
 		virtual ~AbstractComponentHandle() noexcept
 		{
-			assert(m_UID != 0 && m_RawPtr != nullptr);
 			m_UID = 0;
 			m_RawPtr = nullptr;
 		}
@@ -48,7 +47,13 @@ namespace secs
 			assert(m_UID != 0 && m_RawPtr);
 		}
 
-		constexpr AbstractComponentHandle(AbstractComponentHandle&&) noexcept = default;
+		constexpr AbstractComponentHandle(AbstractComponentHandle&& other) noexcept :
+			m_UID{ other.m_UID },
+			m_RawPtr{ other.m_RawPtr }
+		{
+			other.m_UID = 0;
+			other.m_RawPtr = nullptr;
+		}
 		constexpr AbstractComponentHandle& operator =(AbstractComponentHandle&&) noexcept = default;
 
 	private:
