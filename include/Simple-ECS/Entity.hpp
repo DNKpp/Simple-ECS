@@ -13,12 +13,26 @@
 #include <typeindex>
 #include <memory>
 #include <cassert>
+#include <stdexcept>
 
 #include "AbstractComponentHandle.hpp"
 #include "Typedefs.hpp"
 
 namespace secs
 {
+	class EntityError :
+		public std::runtime_error
+	{
+	public:
+		EntityError(const std::string& msg) :
+			std::runtime_error(msg)
+		{}
+
+		EntityError(const char* msg) :
+			std::runtime_error(msg)
+		{}
+	};
+
 	class Entity
 	{
 	public:
@@ -28,7 +42,16 @@ namespace secs
 			m_Components{ makeComponentInfos(std::forward<TComponentHandles>(handles)...) }
 		{
 			assert(m_UID != 0);
+			assert(sizeof...(handles) == std::size(m_Components));
 		}
+
+		~Entity() noexcept = default;
+
+		constexpr Entity(const Entity&) noexcept = delete;
+		constexpr Entity& operator =(const Entity&) noexcept = delete;
+
+		constexpr Entity(Entity&&) noexcept = default;
+		constexpr Entity& operator =(Entity&&) noexcept = default;
 
 		template <class TComponent>
 		constexpr TComponent* getComponent() noexcept
@@ -41,6 +64,11 @@ namespace secs
 					return static_cast<TComponent*>(handle->getRawPtr());
 			}
 			return nullptr;
+		}
+
+		constexpr UID getUID() const noexcept
+		{
+			return m_UID;
 		}
 
 	private:
@@ -70,6 +98,39 @@ namespace secs
 			components.reserve(sizeof...(handles));
 			(components.emplace_back(std::make_unique<TComponentHandles>(std::forward<TComponentHandles>(handles))), ...);
 			return components;
+		}
+	};
+
+	struct LessEntityByUID
+	{
+		template <class TEntity>
+		bool operator ()(const TEntity& entity, UID uid) const noexcept
+		{
+			return getUID(entity) < uid;
+		}
+
+		template <class TEntity>
+		bool operator ()(UID uid, const TEntity& entity) const noexcept
+		{
+			return uid < getUID(entity);
+		}
+
+		template <class TEntity1, class TEntity2>
+		bool operator ()(const TEntity1& lhs, const TEntity2& rhs) const noexcept
+		{
+			return getUID(lhs) < getUID(rhs);
+		}
+
+	private:
+		constexpr static UID getUID(const Entity& entity) noexcept
+		{
+			return entity.getUID();
+		}
+
+		static UID getUID(const std::unique_ptr<Entity>& entityPtr) noexcept
+		{
+			assert(entityPtr);
+			return entityPtr->getUID();
 		}
 	};
 }
