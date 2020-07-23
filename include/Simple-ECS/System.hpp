@@ -13,12 +13,26 @@
 #include <optional>
 #include <cassert>
 #include <memory>
+#include <stdexcept>
 
 #include "AbstractComponentHandle.hpp"
 #include "EmptyCallable.hpp"
 
 namespace secs
 {
+	class SystemError :
+		public std::runtime_error
+	{
+	public:
+		SystemError(const std::string& msg) :
+			std::runtime_error(msg)
+		{}
+
+		SystemError(const char* msg) :
+			std::runtime_error(msg)
+		{}
+	};
+
 namespace details
 {
 	template <class TComponent>
@@ -46,9 +60,12 @@ namespace details
 
 			~ComponentHandle() noexcept override
 			{
-				assert(m_Holder);
-				m_Holder->deleteComponent(getUID());
-				m_Holder = nullptr;
+				if (getUID() != 0)
+				{
+					assert(m_Holder);
+					m_Holder->deleteComponent(getUID());
+					m_Holder = nullptr;
+				}
 			}
 
 			constexpr std::type_index getTypeInfo() const noexcept override
@@ -64,16 +81,16 @@ namespace details
 		ComponentHolder& operator =(const ComponentHolder&) = delete;
 
 		template <class TComponentCreator = utils::EmptyCallable<TComponent>>
-		ComponentHandle createComponent(TComponentCreator&& creator = TComponentCreator{})
+		ComponentHandle createComponent(UID entityUID, TComponentCreator&& creator = TComponentCreator{})
 		{
 			if (auto itr = std::find(std::begin(m_Components), std::end(m_Components), std::nullopt);
 				itr != std::end(m_Components))
 			{
-				itr->emplace(creator());
-				return { static_cast<UID>(std::distance(std::begin(m_Components), itr) + 1u), *this, *itr };
+				itr->emplace(ComponentInfo{ entityUID, creator() });
+				return { static_cast<UID>(std::distance(std::begin(m_Components), itr) + 1u), *this, (*itr)->component };
 			}
-			m_Components.emplace_back(creator());
-			return { std::size(m_Components), *this, m_Components.back() };
+			m_Components.emplace_back(ComponentInfo{ entityUID, creator() });
+			return { std::size(m_Components), *this, m_Components.back()->component };
 		}
 
 		TComponent* getComponent(UID uid)
@@ -105,12 +122,18 @@ namespace details
 		}
 
 	private:
-		std::deque<std::optional<TComponent>> m_Components;
+		struct ComponentInfo
+		{
+			UID entityUID;
+			TComponent component;
+		};
+
+		std::deque<std::optional<ComponentInfo>> m_Components;
 
 		constexpr void deleteComponent(UID uid) noexcept
 		{
-			if (uid < std::size(m_Components))
-				m_Components[uid].reset();
+			if (uid <= std::size(m_Components))
+				m_Components[uid - 1].reset();
 		}
 	};
 }
