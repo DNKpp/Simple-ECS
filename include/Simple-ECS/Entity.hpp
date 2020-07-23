@@ -103,20 +103,8 @@ namespace secs
 
 	struct LessEntityByUID
 	{
-		template <class TEntity>
-		bool operator ()(const TEntity& entity, UID uid) const noexcept
-		{
-			return getUID(entity) < uid;
-		}
-
-		template <class TEntity>
-		bool operator ()(UID uid, const TEntity& entity) const noexcept
-		{
-			return uid < getUID(entity);
-		}
-
-		template <class TEntity1, class TEntity2>
-		bool operator ()(const TEntity1& lhs, const TEntity2& rhs) const noexcept
+		template <class TLhs, class TRhs>
+		bool operator ()(const TLhs& lhs, const TRhs& rhs) const noexcept
 		{
 			return getUID(lhs) < getUID(rhs);
 		}
@@ -131,6 +119,11 @@ namespace secs
 		{
 			assert(entityPtr);
 			return entityPtr->getUID();
+		}
+
+		constexpr static UID getUID(UID uid) noexcept
+		{
+			return uid;
 		}
 	};
 }
