@@ -103,93 +103,11 @@ namespace secs
 			return const_cast<TComponent&>(std::as_const(*this).getComponent<TComponent>());
 		}
 
-		//void onStart();
-		//void onEnd();
-
 	private:
 		UID m_UID = 0;
 		EntityState m_State = EntityState::none;
 		std::unique_ptr<BaseComponentStorage> m_ComponentStorage;
 	};
-
-	//template <class... TComponent>
-	//class Entity
-	//{
-	//private:
-	//};
-
-	//class Entity
-	//{
-	//public:
-	//	template <class... TComponentHandles>
-	//	constexpr Entity(UID uid, TComponentHandles&&... handles) :
-	//		m_UID{ uid },
-	//		m_Components{ makeComponentInfos(std::forward<TComponentHandles>(handles)...) }
-	//	{
-	//		assert(m_UID != 0);
-	//		assert(sizeof...(handles) == std::size(m_Components));
-	//	}
-
-	//	~Entity() noexcept = default;
-
-	//	constexpr Entity(const Entity&) noexcept = delete;
-	//	constexpr Entity& operator =(const Entity&) noexcept = delete;
-
-	//	constexpr Entity(Entity&&) noexcept = default;
-	//	constexpr Entity& operator =(Entity&&) noexcept = default;
-
-	//	template <class TComponent>
-	//	constexpr TComponent* getComponent() noexcept
-	//	{
-	//		// ToDo: performe binary lookup
-	//		std::type_index typeIndex = typeid(TComponent);
-	//		for (auto& handle : m_Components)
-	//		{
-	//			if (handle->getTypeInfo() == typeIndex)
-	//				return static_cast<TComponent*>(handle->getRawPtr());
-	//		}
-	//		return nullptr;
-	//	}
-
-	//	constexpr UID getUID() const noexcept
-	//	{
-	//		return m_UID;
-	//	}
-
-
-
-	//private:
-	//	UID m_UID;
-
-	//	//struct ComponentInfo
-	//	//{
-	//	//	std::type_index type;
-	//	//	std::unique_ptr<AbstractComponentHandle> handle;
-
-	//	//	template <class TComponentHandle>
-	//	//	constexpr ComponentInfo(TComponentHandle&& _handle) :
-	//	//		type{ _handle.getTypeInfo() },
-	//	//		handle{ std::make_unique<TComponentHandle>(std::forward<TComponentHandle>(_handle)) }
-	//	//	{
-	//	//	}
-	//	//};
-	//	//std::vector<ComponentInfo> m_Components;
-
-	//	// ToDo: use sorted container (by std::type_index) for faster lookups
-	//	std::vector<std::unique_ptr<AbstractComponentHandle>> m_Components;
-
-	//	template <class... TComponentHandles>
-	//	static constexpr decltype(auto) makeComponentInfos(TComponentHandles&&... handles)
-	//	{
-	//		std::vector<std::unique_ptr<AbstractComponentHandle>> components
-	//		{
-	//			(std::make_unique<TComponentHandles>(std::forward<TComponentHandles>(handles))), ...)
-	//		};
-	//		//components.reserve(sizeof...(handles));
-	//		//(components.emplace_back(std::make_unique<TComponentHandles>(std::forward<TComponentHandles>(handles))), ...);
-	//		return components;
-	//	}
-	//};
 
 	struct LessEntityByUID
 	{
