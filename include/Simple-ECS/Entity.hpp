@@ -39,7 +39,7 @@ namespace secs
 	class Entity
 	{
 	public:
-		constexpr Entity(UID uid, std::unique_ptr<BaseComponentStorage> componentStorage) :
+		Entity(UID uid, std::unique_ptr<BaseComponentStorage> componentStorage) :
 			m_UID{ uid },
 			m_ComponentStorage{ std::move(componentStorage) }
 		{
@@ -52,9 +52,19 @@ namespace secs
 			return m_UID;
 		}
 
-		constexpr State getState() const noexcept
+		constexpr EntityState getState() const noexcept
 		{
 			return m_State;
+		}
+
+		void changeState(EntityState state) noexcept
+		{
+			assert(static_cast<int>(m_State) < static_cast<int>(state));
+			m_State = state;
+
+			assert(m_ComponentStorage);
+			m_ComponentStorage->onEntityStateChanged(m_State);
+
 		}
 
 		template <class TComponent>
@@ -98,7 +108,7 @@ namespace secs
 
 	private:
 		UID m_UID = 0;
-		State m_State = State::starting;
+		EntityState m_State = EntityState::none;
 		std::unique_ptr<BaseComponentStorage> m_ComponentStorage;
 	};
 
