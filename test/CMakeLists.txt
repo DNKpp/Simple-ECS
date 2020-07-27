@@ -7,7 +7,7 @@ project(Test)
 
 add_executable(Test
     "main.cpp"
-    "SystemTest.cpp")
+    "SystemTest.cpp" "WorldTest.cpp")
 
 set_property(TARGET Test
     PROPERTY CXX_STANDARD 20)
