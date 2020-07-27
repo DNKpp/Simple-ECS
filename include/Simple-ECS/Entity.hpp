@@ -63,7 +63,7 @@ namespace secs
 			m_State = state;
 
 			assert(m_ComponentStorage);
-			m_ComponentStorage->onEntityStateChanged(m_State);
+			m_ComponentStorage->onEntityStateChanged(*this);
 
 		}
 

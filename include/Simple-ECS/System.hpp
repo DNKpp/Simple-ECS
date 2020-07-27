@@ -52,6 +52,8 @@ namespace secs
 		constexpr ISystem() noexcept = default;
 	};
 
+	class Entity;
+
 	template <class TComponent>
 	class SystemBase :
 		public ISystem
@@ -141,10 +143,10 @@ namespace secs
 			return std::empty(m_Components);
 		}
 
-		constexpr void onEntityStateChanged(UID componentUID, EntityState state)
+		constexpr void onEntityStateChanged(UID componentUID, Entity& entity)
 		{
 			if (auto component = getComponentPtr(componentUID))
-				onEntityStateChangedImpl(*component, state);
+				onEntityStateChangedImpl(*component, entity);
 		}
 
 		template <class TComponentAction = utils::EmptyCallable<>>
@@ -164,7 +166,7 @@ namespace secs
 	protected:
 		SystemBase() = default;
 
-		virtual void onEntityStateChangedImpl(TComponent& component, EntityState state) noexcept
+		virtual void onEntityStateChangedImpl(TComponent& component, Entity& entity) noexcept
 		{
 		}
 

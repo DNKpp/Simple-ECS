@@ -19,6 +19,8 @@
 
 namespace secs
 {
+	class Entity;
+
 	class BaseComponentStorage
 	{
 	public:
@@ -44,9 +46,9 @@ namespace secs
 		}
 
 		/* ToDo: c++20
-		constexpr */void onEntityStateChanged(EntityState state) noexcept
+		constexpr */void onEntityStateChanged(Entity& entity) noexcept
 		{
-			onEntityStateChangedImpl(state);
+			onEntityStateChangedImpl(entity);
 		}
 
 	protected:
@@ -57,7 +59,7 @@ namespace secs
 		/*constexpr*/ virtual bool hasComponentImpl(std::type_index typeIndex) const noexcept = 0;
 		/*constexpr*/ virtual const void* getComponentImpl(std::type_index typeIndex) const noexcept = 0;
 		/*constexpr*/ virtual void* getComponentImpl(std::type_index typeIndex) noexcept = 0;
-		/*constexpr*/ virtual void onEntityStateChangedImpl(EntityState state) noexcept = 0;
+		/*constexpr*/ virtual void onEntityStateChangedImpl(Entity& entity) noexcept = 0;
 	};
 
 	template <class... TComponent>
@@ -105,16 +107,16 @@ namespace secs
 		}
 
 		/* ToDo: c++20
-		constexpr */void onEntityStateChangedImpl(EntityState state) noexcept override
+		constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
 		{
-			(emitEntityStateChange(std::get<HandleType<TComponent>>(m_ComponentHandles), state), ...);
+			(emitEntityStateChange(std::get<HandleType<TComponent>>(m_ComponentHandles), entity), ...);
 		}
 
 		template <class THandle>
-		constexpr void emitEntityStateChange(THandle& handle, EntityState state) noexcept
+		constexpr void emitEntityStateChange(THandle& handle, Entity& entity) noexcept
 		{
 			assert(!handle.isEmpty());
-			handle.getSystem().onEntityStateChanged(handle.getUID(), state);
+			handle.getSystem().onEntityStateChanged(handle.getUID(), entity);
 		}
 
 		//template <class TComponents>
