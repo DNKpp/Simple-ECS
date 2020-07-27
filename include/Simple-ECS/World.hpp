@@ -78,25 +78,25 @@ namespace secs
 			return *m_Entities.back();
 		}
 
-		void destroyEntityLater(UID uid) noexcept
+		constexpr void destroyEntityLater(UID uid) noexcept
 		{
 			std::scoped_lock lock{ m_DestructableEntityMx };
 			m_DestructableEntityUIDs.emplace_back(uid);
 		}
 
-		const Entity* findEntityPtr(UID uid) const noexcept
+		constexpr const Entity* findEntityPtr(UID uid) const noexcept
 		{
 			std::shared_lock entityLock{ m_EntityMx };
 			auto itr = findEntityItr(*this, uid);
 			return itr != std::end(m_Entities) ? &**itr : nullptr;
 		}
 
-		Entity* findEntityPtr(UID uid) noexcept
+		constexpr Entity* findEntityPtr(UID uid) noexcept
 		{
 			return const_cast<Entity*>(std::as_const(*this).findEntityPtr(uid));
 		}
 
-		const Entity& findEntity(UID uid) const
+		constexpr const Entity& findEntity(UID uid) const
 		{
 			if (auto ptr = findEntityPtr(uid))
 				return *ptr;
@@ -104,12 +104,12 @@ namespace secs
 			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
 		}
 
-		Entity& findEntity(UID uid)
+		constexpr Entity& findEntity(UID uid)
 		{
 			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
 		}
 
-		void execEntityDestruction()
+		constexpr void execEntityDestruction()
 		{
 			auto destructableEntityUIDs = takeDestructableEntityUIDs();
 			if (std::empty(destructableEntityUIDs))
@@ -146,14 +146,16 @@ namespace secs
 		using SystemComponentType = typename std::decay_t<TSystem>::ComponentType;
 
 		template <class TComponent, class TWorld>
-		static constexpr decltype(auto) findSystemStorage(TWorld&& world) noexcept
+		constexpr static decltype(auto) findSystemStorage(TWorld&& world) noexcept
 		{
 			std::type_index typeIndex = typeid(std::decay_t<TComponent>);
-			return std::find_if(std::begin(world.m_Systems), std::end(world.m_Systems), [typeIndex](const auto& info) { return info.type == typeIndex; });
+			return std::find_if(std::begin(world.m_Systems), std::end(world.m_Systems),
+				[typeIndex](const auto& info) { return info.type == typeIndex; }
+			);
 		}
 
 		template <class TWorld>
-		static constexpr auto findEntityItr(TWorld&& world, UID uid) noexcept
+		constexpr static auto findEntityItr(TWorld&& world, UID uid) noexcept
 		{
 			if (auto itr = std::lower_bound(std::begin(world.m_Entities), std::end(world.m_Entities), uid, LessEntityByUID{});
 				itr != std::end(world.m_Entities) && (*itr)->getUID() == uid)
@@ -163,7 +165,7 @@ namespace secs
 			return std::end(world.m_Entities);
 		}
 
-		std::vector<UID> takeDestructableEntityUIDs() noexcept
+		constexpr std::vector<UID> takeDestructableEntityUIDs() noexcept
 		{
 			std::scoped_lock lock{ m_DestructableEntityMx };
 			auto tmp = std::move(m_DestructableEntityUIDs);
