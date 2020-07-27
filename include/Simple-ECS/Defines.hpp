@@ -13,6 +13,7 @@ namespace secs
 {
 	enum class EntityState
 	{
+		none,
 		initializing,
 		running,
 		tearDown
