@@ -30,13 +30,14 @@ namespace secs
 		{
 			std::scoped_lock systemLock{ m_SystemMx };
 
-			if (auto itr = findSystemStorage<SystemComponentType<TSystem>>(*this);
+			using TComponentType = typename TSystem::ComponentType;
+			if (auto itr = findSystemStorage<TComponentType>(*this);
 				itr != std::end(m_Systems))
 			{
 				itr->system = std::make_unique<std::remove_cvref_t<TSystem>>(std::move(system));
 			}
 			else
-				m_Systems.emplace_back(typeid(SystemComponentType<TSystem>), std::move(system));
+				m_Systems.emplace_back(typeid(TComponentType), std::move(system));
 		}
 
 		template <class TComponent>
@@ -134,9 +135,6 @@ namespace secs
 		};
 		mutable std::shared_mutex m_SystemMx;
 		std::vector<SystemStorage> m_Systems;
-
-		template <class TSystem>
-		using SystemComponentType = typename std::decay_t<TSystem>::ComponentType;
 
 		template <class TComponent, class TWorld>
 		constexpr static decltype(auto) findSystemStorage(TWorld&& world) noexcept
