@@ -36,6 +36,12 @@ namespace secs
 	class ISystem
 	{
 	public:
+		constexpr ISystem(const ISystem&) noexcept = delete;
+		constexpr ISystem& operator =(const ISystem&) noexcept = delete;
+
+		constexpr ISystem(ISystem&&) noexcept = default;
+		constexpr ISystem& operator =(ISystem&&) noexcept = default;
+
 		virtual ~ISystem() noexcept = default;
 
 		virtual void preUpdate() = 0;
@@ -43,7 +49,7 @@ namespace secs
 		virtual void postUpdate() = 0;
 
 	protected:
-		ISystem() noexcept = default;
+		constexpr ISystem() noexcept = default;
 	};
 
 	template <class TComponent>
@@ -67,8 +73,8 @@ namespace secs
 		SystemBase(const SystemBase&) = delete;
 		SystemBase& operator =(const SystemBase&) = delete;
 
-		constexpr SystemBase(SystemBase&&) noexcept = default;
-		constexpr SystemBase& operator =(SystemBase&&) noexcept = default;
+		SystemBase(SystemBase&&) = default;
+		SystemBase& operator =(SystemBase&&) = default;
 
 		template <class TComponentCreator = utils::EmptyCallable<TComponent>>
 		ComponentHandle createComponent(UID entityUID, TComponentCreator&& creator = TComponentCreator{})
@@ -137,8 +143,8 @@ namespace secs
 
 		constexpr void onEntityStateChanged(UID componentUID, EntityState state)
 		{
-			if (auto info = getComponentPtr(componentUID))
-				onEntityStateChangedImpl(info->component, state);
+			if (auto component = getComponentPtr(componentUID))
+				onEntityStateChangedImpl(*component, state);
 		}
 
 		template <class TComponentAction = utils::EmptyCallable<>>
@@ -156,7 +162,7 @@ namespace secs
 		void postUpdate() noexcept override {}
 
 	protected:
-		constexpr SystemBase() = default;
+		SystemBase() = default;
 
 		virtual void onEntityStateChangedImpl(TComponent& component, EntityState state) noexcept
 		{
