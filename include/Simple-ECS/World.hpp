@@ -18,6 +18,7 @@
 
 #include "System.hpp"
 #include "Entity.hpp"
+#include "ComponentStorage.hpp"
 
 namespace secs
 {
@@ -32,14 +33,14 @@ namespace secs
 			if (auto itr = findSystemStorage<SystemComponentType<TSystem>>(*this);
 				itr != std::end(m_Systems))
 			{
-				itr->system = std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system));
+				itr->system = std::make_unique<std::remove_cvref_t<TSystem>>(std::move(system));
 			}
 			else
-				m_Systems.emplace_back(typeid(SystemComponentType<TSystem>), std::forward<TSystem>(system));
+				m_Systems.emplace_back(typeid(SystemComponentType<TSystem>), std::move(system));
 		}
 
 		template <class TComponent>
-		constexpr const SystemBase<TComponent>* getSystemPtr() const noexcept
+		const SystemBase<TComponent>* getSystemPtr() const noexcept
 		{
 			std::shared_lock systemLock{ m_SystemMx };
 
@@ -48,13 +49,13 @@ namespace secs
 		}
 
 		template <class TComponent>
-		constexpr SystemBase<TComponent>* getSystemPtr() noexcept
+		SystemBase<TComponent>* getSystemPtr() noexcept
 		{
 			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).getSystem<TComponent>());
 		}
 
 		template <class TComponent>
-		constexpr const SystemBase<TComponent>& getSystem() const
+		const SystemBase<TComponent>& getSystem() const
 		{
 			if (auto ptr = getSystemPtr<TComponent>())
 				return *ptr;
@@ -63,40 +64,43 @@ namespace secs
 		}
 
 		template <class TComponent>
-		constexpr SystemBase<TComponent>& getSystem()
+		SystemBase<TComponent>& getSystem()
 		{
 			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).getSystem<TComponent>());
 		}
 
 		template <class... TComponent>
-		constexpr Entity& createEntity() noexcept
+		Entity& createEntity()
 		{
-			std::scoped_lock entityLock{ m_EntityMx };
+			std::scoped_lock entityLock{ m_NewEntityMx };
 
 			auto entityUID = m_NextUID++;
-			m_Entities.emplace_back(std::make_unique<Entity>(entityUID, (getSystem<TComponent>().createComponent(entityUID), ...)));
+			auto componentStorage = std::make_unique<ComponentStorage<TComponent...>>((getSystem<TComponent>().createComponent(entityUID), ...));
+
+			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
+			m_Entities.back()->changeState(EntityState::initializing);
 			return *m_Entities.back();
 		}
 
-		constexpr void destroyEntityLater(UID uid) noexcept
+		void destroyEntityLater(UID uid) noexcept
 		{
 			std::scoped_lock lock{ m_DestructableEntityMx };
 			m_DestructableEntityUIDs.emplace_back(uid);
 		}
 
-		constexpr const Entity* findEntityPtr(UID uid) const noexcept
+		const Entity* findEntityPtr(UID uid) const noexcept
 		{
 			std::shared_lock entityLock{ m_EntityMx };
 			auto itr = findEntityItr(*this, uid);
 			return itr != std::end(m_Entities) ? &**itr : nullptr;
 		}
 
-		constexpr Entity* findEntityPtr(UID uid) noexcept
+		Entity* findEntityPtr(UID uid) noexcept
 		{
 			return const_cast<Entity*>(std::as_const(*this).findEntityPtr(uid));
 		}
 
-		constexpr const Entity& findEntity(UID uid) const
+		const Entity& findEntity(UID uid) const
 		{
 			if (auto ptr = findEntityPtr(uid))
 				return *ptr;
@@ -104,26 +108,15 @@ namespace secs
 			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
 		}
 
-		constexpr Entity& findEntity(UID uid)
+		Entity& findEntity(UID uid)
 		{
 			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
 		}
 
-		constexpr void execEntityDestruction()
+		void postUpdate() noexcept
 		{
-			auto destructableEntityUIDs = takeDestructableEntityUIDs();
-			if (std::empty(destructableEntityUIDs))
-				return;
-
-			std::sort(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs));
-			destructableEntityUIDs.erase(std::unique(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs)), std::end(destructableEntityUIDs));
-
-			std::scoped_lock entityLock{ m_EntityMx };
-			auto oldEntites = std::move(m_Entities);
-
-			std::set_difference(std::make_move_iterator(std::begin(oldEntites)), std::make_move_iterator(std::end(oldEntites)),
-				std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs),
-				std::back_inserter(m_Entities), LessEntityByUID{});
+			mergeNewEntities();
+			execEntityDestruction();
 		}
 
 	private:
@@ -165,14 +158,55 @@ namespace secs
 			return std::end(world.m_Entities);
 		}
 
-		constexpr std::vector<UID> takeDestructableEntityUIDs() noexcept
+		auto takeDestructableEntityUIDs() noexcept
 		{
 			std::scoped_lock lock{ m_DestructableEntityMx };
 			auto tmp = std::move(m_DestructableEntityUIDs);
 			return tmp;
 		}
 
+		auto takeNewEntities() noexcept
+		{
+			std::scoped_lock lock{ m_NewEntityMx };
+			auto tmp = std::move(m_NewEntities);
+			return tmp;
+		}
+
+		void mergeNewEntities()
+		{
+			auto newEntities = takeNewEntities();
+			if (std::empty(newEntities))
+				return;
+
+			for (auto& entity : newEntities)
+				entity->changeState(EntityState::running);
+
+			std::scoped_lock lock{ m_EntityMx };
+			m_Entities.insert(std::end(m_Entities), std::make_move_iterator(std::begin(newEntities)), std::make_move_iterator(std::end(newEntities)));
+		}
+
+		void execEntityDestruction()
+		{
+			auto destructableEntityUIDs = takeDestructableEntityUIDs();
+			if (std::empty(destructableEntityUIDs))
+				return;
+
+			std::sort(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs));
+			destructableEntityUIDs.erase(std::unique(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs)), std::end(destructableEntityUIDs));
+
+			std::scoped_lock entityLock{ m_EntityMx };
+			auto oldEntites = std::move(m_Entities);
+
+			std::set_difference(std::make_move_iterator(std::begin(oldEntites)), std::make_move_iterator(std::end(oldEntites)),
+				std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs),
+				std::back_inserter(m_Entities), LessEntityByUID{});
+
+		}
+
 		UID m_NextUID = 1;
+		mutable std::mutex m_NewEntityMx;
+		std::vector<std::unique_ptr<Entity>> m_NewEntities;	// ptr is simply used to get a consistent memory space for each entity
+
 		mutable std::shared_mutex m_EntityMx;
 		std::vector<std::unique_ptr<Entity>> m_Entities;	// ptr is simply used to get a consistent memory space for each entity
 
