@@ -13,6 +13,7 @@
 #include <typeindex>
 
 #include "ComponentHandle.hpp"
+#include "ComponentTraits.hpp"
 #include "Defines.hpp"
 #include "Typedefs.hpp"
 
@@ -42,7 +43,11 @@ namespace secs
 			return static_cast<TComponent*>(getComponentImpl(typeid(TComponent)));
 		}
 
-		constexpr void onEntityStateChanged(EntityState state) noexcept = 0;
+		/* ToDo: c++20
+		constexpr */void onEntityStateChanged(EntityState state) noexcept
+		{
+			onEntityStateChangedImpl(state);
+		}
 
 	protected:
 		constexpr BaseComponentStorage() noexcept = default;
@@ -55,23 +60,27 @@ namespace secs
 		/*constexpr*/ virtual void onEntityStateChangedImpl(EntityState state) noexcept = 0;
 	};
 
-	template <class... TComponentHandle>
+	template <class... TComponent>
 	class ComponentStorage :
 		public BaseComponentStorage
 	{
+	private:
+		template <class UComponent>
+		using HandleType = typename ComponentTraits<UComponent>::ComponentHandleType;
+
 	public:
-		constexpr ComponentStorage(TComponentHandle&&... handle) noexcept :
+		constexpr ComponentStorage(HandleType<TComponent>&&... handle) noexcept :
 			BaseComponentStorage{},
-			m_ComponentHandles{ std::forward<TComponentHandle>(handle)... }
+			m_ComponentHandles{ std::forward<HandleType<TComponent>>(handle)... }
 		{}
 
 	private:
-		std::tuple<TComponentHandle...> m_ComponentHandles;
+		std::tuple<HandleType<TComponent>...> m_ComponentHandles;
 
 		/* ToDo: c++20
 		constexpr */bool hasComponentImpl(std::type_index typeIndex) const noexcept override
 		{
-			return (std::type_index(typeid(typename TComponentHandle::ComponentType)) == typeIndex || ...);
+			return ((std::type_index(typeid(TComponent)) == typeIndex) || ...);
 		}
 
 		/* ToDo: c++20
@@ -85,7 +94,7 @@ namespace secs
 					component = &param;
 				}
 			};
-			(find(*std::get<TComponentHandle>(m_ComponentHandles).system), ...);
+			(find(std::get<HandleType<TComponent>>(m_ComponentHandles).getSystem()), ...);
 			return component;
 		}
 
@@ -96,9 +105,9 @@ namespace secs
 		}
 
 		/* ToDo: c++20
-		constexpr */void* onEntityStateChangedImpl(EntityState state) noexcept override
+		constexpr */void onEntityStateChangedImpl(EntityState state) noexcept override
 		{
-			(emitEntityStateChange(std::get<TComponentHandle>(m_ComponentHandles), state), ...);
+			(emitEntityStateChange(std::get<HandleType<TComponent>>(m_ComponentHandles), state), ...);
 		}
 
 		template <class THandle>
