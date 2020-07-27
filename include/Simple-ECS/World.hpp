@@ -78,8 +78,8 @@ namespace secs
 			auto componentStorage = std::make_unique<ComponentStorage<TComponent...>>((getSystem<TComponent>().createComponent(entityUID), ...));
 
 			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
-			m_Entities.back()->changeState(EntityState::initializing);
-			return *m_Entities.back();
+			m_NewEntities.back()->changeState(EntityState::initializing);
+			return *m_NewEntities.back();
 		}
 
 		void destroyEntityLater(UID uid) noexcept
