@@ -12,10 +12,10 @@
 #include <queue>
 #include <optional>
 #include <cassert>
-#include <memory>
 #include <stdexcept>
 
-#include "AbstractComponentHandle.hpp"
+#include "ComponentHandle.hpp"
+#include "Defines.hpp"
 #include "EmptyCallable.hpp"
 
 namespace secs
@@ -33,85 +33,42 @@ namespace secs
 		{}
 	};
 
-namespace details
-{
-	template <class TComponent>
-	class ComponentHolder
+	class ISystem
 	{
 	public:
-		using ComponentType = TComponent;
+		virtual ~ISystem() noexcept = default;
 
-		class ComponentHandle :
-			public AbstractComponentHandle
+		virtual void preUpdate() = 0;
+		virtual void update() = 0;
+		virtual void postUpdate() = 0;
+
+	protected:
+		ISystem() noexcept = default;
+	};
+
+	template <class TComponent>
+	class SystemBase :
+		public ISystem
+	{
+	private:
+		template <class TSystem>
+		friend class ComponentHandle;
+
+		struct ComponentInfo
 		{
-			using Super = AbstractComponentHandle;
-
-		public:
-			constexpr ComponentHandle(UID uid, ComponentHolder& holder, TComponent& component) :
-				m_Holder(&holder),
-				Super(uid, component)
-			{
-				assert(m_Holder);
-			}
-
-			ComponentHandle(const ComponentHandle&) = delete;
-			ComponentHandle& operator =(const ComponentHandle&) = delete;
-
-			// ToDo: in cpp20
-			/*constexpr*/ ComponentHandle(ComponentHandle&& other) noexcept
-			{
-				*this = std::move(other);
-			}
-			// ToDo: in cpp20
-			/*constexpr*/ ComponentHandle& operator =(ComponentHandle&& other) noexcept
-			{
-				if (this != &other)
-				{
-					this->Super::operator =(std::move(other));
-					m_Holder = other.m_Holder;
-					other.reset();
-				}
-				return *this;
-			}
-
-			~ComponentHandle() noexcept override
-			{
-				release();
-			}
-
-			constexpr const ComponentHolder* getComponentHolder() const noexcept
-			{
-				return m_Holder;
-			}
-
-			constexpr std::type_index getTypeInfo() const noexcept override
-			{
-				return typeid(TComponent);
-			}
-
-			// ToDo: in cpp20
-			/*constexpr*/ void release() noexcept override
-			{
-				if (getUID() != 0)
-				{
-					assert(m_Holder);
-					m_Holder->deleteComponent(getUID());
-					reset();
-				}
-			}
-
-		private:
-			ComponentHolder* m_Holder;
-
-			constexpr void reset() noexcept
-			{
-				Super::reset();
-				m_Holder = nullptr;
-			}
+			UID entityUID;
+			TComponent component;
 		};
 
-		ComponentHolder(const ComponentHolder&) = delete;
-		ComponentHolder& operator =(const ComponentHolder&) = delete;
+	public:
+		using ComponentType = TComponent;
+		using ComponentHandle = ComponentHandle<SystemBase<TComponent>>;
+
+		SystemBase(const SystemBase&) = delete;
+		SystemBase& operator =(const SystemBase&) = delete;
+
+		constexpr SystemBase(SystemBase&&) noexcept = default;
+		constexpr SystemBase& operator =(SystemBase&&) noexcept = default;
 
 		template <class TComponentCreator = utils::EmptyCallable<TComponent>>
 		ComponentHandle createComponent(UID entityUID, TComponentCreator&& creator = TComponentCreator{})
@@ -120,21 +77,47 @@ namespace details
 				itr != std::end(m_Components))
 			{
 				itr->emplace(ComponentInfo{ entityUID, creator() });
-				return { static_cast<UID>(std::distance(std::begin(m_Components), itr) + 1u), *this, (*itr)->component };
+				return { static_cast<UID>(std::distance(std::begin(m_Components), itr) + 1u), *this };
 			}
 			m_Components.emplace_back(ComponentInfo{ entityUID, creator() });
-			return { std::size(m_Components), *this, m_Components.back()->component };
+			return { std::size(m_Components), *this };
 		}
 
-		TComponent* getComponent(UID uid)
+		constexpr bool hasComponent(UID uid) const noexcept
 		{
-			if (uid < std::size(m_Components))
+			return 0u < uid && uid <= std::size(m_Components) && m_Components[uid - 1u];
+		}
+
+		constexpr const ComponentInfo& operator [](UID uid) const noexcept
+		{
+			assert(hasComponent(uid));
+			return m_Components[uid - 1u];
+		}
+
+		constexpr const TComponent* getComponentPtr(UID uid) const noexcept
+		{
+			if (0u < uid && uid <= std::size(m_Components))
 			{
-				auto& component = m_Components[uid];
-				if (component)
-					return *component;
+				if (auto& info = m_Components[uid - 1u])
+					return &info->component;
 			}
 			return nullptr;
+		}
+
+		constexpr TComponent* getComponentPtr(UID uid) noexcept
+		{
+			return const_cast<TComponent*>(std::as_const(*this).getComponentPtr(uid));
+		}
+
+		constexpr const TComponent& getComponent(UID uid) const noexcept
+		{
+			assert(hasComponent(uid));
+			return m_Components[uid - 1u]->component;
+		}
+
+		constexpr TComponent& getComponent(UID uid) noexcept
+		{
+			return const_cast<TComponent&>(std::as_const(*this).getComponent(uid));
 		}
 
 		constexpr std::size_t componentCount() const noexcept
@@ -152,30 +135,34 @@ namespace details
 			return std::empty(m_Components);
 		}
 
-	protected:
-		constexpr ComponentHolder() = default;
-		~ComponentHolder() noexcept = default;
-
-		constexpr ComponentHolder(ComponentHolder&& other) = default;
-		constexpr ComponentHolder& operator =(ComponentHolder&&) = default;
-
-		template <class TComponentUpdater = utils::EmptyCallable<>>
-		void foreachComponent(TComponentUpdater&& updater = TComponentUpdater())
+		constexpr void onEntityStateChanged(UID componentUID, EntityState state)
 		{
-			for (auto& component : m_Components)
+			if (auto info = getComponentPtr(componentUID))
+				onEntityStateChangedImpl(info->component, state);
+		}
+
+		template <class TComponentAction = utils::EmptyCallable<>>
+		void foreachComponent(TComponentAction&& action = TComponentAction())
+		{
+			for (auto& info : m_Components)
 			{
-				if (component)
-					updater(*component);
+				if (info)
+					action(info->entityUID, info->component);
 			}
 		}
 
-	private:
-		struct ComponentInfo
-		{
-			UID entityUID;
-			TComponent component;
-		};
+		void preUpdate() noexcept override {}
+		void update() noexcept override {}
+		void postUpdate() noexcept override {}
 
+	protected:
+		constexpr SystemBase() = default;
+
+		virtual void onEntityStateChangedImpl(TComponent& component, EntityState state) noexcept
+		{
+		}
+
+	private:
 		std::deque<std::optional<ComponentInfo>> m_Components;
 
 		constexpr void deleteComponent(UID uid) noexcept
@@ -183,34 +170,6 @@ namespace details
 			if (uid <= std::size(m_Components))
 				m_Components[uid - 1].reset();
 		}
-	};
-}
-
-	class ISystem
-	{
-	public:
-		virtual ~ISystem() noexcept = default;
-
-		virtual void preUpdateComponents() = 0;
-		virtual void updateComponents() = 0;
-		virtual void postUpdateComponents() = 0;
-
-	protected:
-		ISystem() noexcept = default;
-	};
-
-	template <class TComponent>
-	class SystemBase :
-		public ISystem,
-		public details::ComponentHolder<TComponent>
-	{
-	public:
-		void preUpdateComponents() noexcept override {}
-		void updateComponents() noexcept override {}
-		void postUpdateComponents() noexcept override {}
-
-	protected:
-		constexpr SystemBase() = default;
 	};
 }
 
