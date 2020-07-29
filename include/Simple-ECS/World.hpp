@@ -15,6 +15,7 @@
 #include <typeinfo>
 #include <mutex>
 #include <shared_mutex>
+#include <type_traits>
 
 #include "System.hpp"
 #include "Entity.hpp"
@@ -193,12 +194,17 @@ namespace secs
 			destructableEntityUIDs.erase(std::unique(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs)), std::end(destructableEntityUIDs));
 
 			std::scoped_lock entityLock{ m_EntityMx };
-			auto oldEntites = std::move(m_Entities);
+			auto oldEntities = std::move(m_Entities);
 
-			std::set_difference(std::make_move_iterator(std::begin(oldEntites)), std::make_move_iterator(std::end(oldEntites)),
+			std::set_difference(std::make_move_iterator(std::begin(oldEntities)), std::make_move_iterator(std::end(oldEntities)),
 				std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs),
 				std::back_inserter(m_Entities), LessEntityByUID{});
 
+			for (auto& entity : oldEntities)
+			{
+				if (entity)
+					entity->changeState(EntityState::tearDown);
+			}
 		}
 
 		UID m_NextUID = 1;
