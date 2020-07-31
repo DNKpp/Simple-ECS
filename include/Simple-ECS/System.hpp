@@ -70,7 +70,7 @@ namespace secs
 
 	public:
 		using ComponentType = TComponent;
-		using ComponentHandle = ComponentHandle<SystemBase<TComponent>>;
+		using ComponentHandle = secs::ComponentHandle<SystemBase<TComponent>>;
 
 		SystemBase(const SystemBase&) = delete;
 		SystemBase& operator =(const SystemBase&) = delete;
