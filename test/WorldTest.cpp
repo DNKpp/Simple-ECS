@@ -28,4 +28,5 @@ TEST_CASE("World system managing tests", "[System]")
 
 	auto& entity = world.createEntity<TestComponent>();
 	world.postUpdate();
+	auto& component = entity.getComponent<TestComponent>();
 }

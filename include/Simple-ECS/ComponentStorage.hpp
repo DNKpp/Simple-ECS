@@ -91,12 +91,13 @@ namespace secs
 			const void* component = nullptr;
 			auto find = [&component, typeIndex](const auto& param)
 			{
-				if (!component && std::type_index(typeid(param)) == typeIndex)
+				using ComponentType = typename std::decay_t<decltype(param)>::ComponentType;
+				if (!component && std::type_index(typeid(ComponentType)) == typeIndex)
 				{
-					component = &param;
+					component = &param.getComponent();
 				}
 			};
-			(find(std::get<HandleType<TComponent>>(m_ComponentHandles).getSystem()), ...);
+			(find(std::get<HandleType<TComponent>>(m_ComponentHandles)), ...);
 			return component;
 		}
 
