@@ -93,7 +93,7 @@ namespace secs
 		const Entity* findEntityPtr(UID uid) const noexcept
 		{
 			std::shared_lock entityLock{ m_EntityMx };
-			auto itr = findEntityItr(*this, uid);
+			auto itr = findEntityItr(m_Entities, uid);
 			return itr != std::end(m_Entities) ? &**itr : nullptr;
 		}
 
@@ -146,15 +146,15 @@ namespace secs
 			);
 		}
 
-		template <class TWorld>
-		constexpr static auto findEntityItr(TWorld&& world, UID uid) noexcept
+		template <class TContainer>
+		constexpr static auto findEntityItr(TContainer& container, UID uid) noexcept -> decltype(std::begin(container))
 		{
-			if (auto itr = std::lower_bound(std::begin(world.m_Entities), std::end(world.m_Entities), uid, LessEntityByUID{});
-				itr != std::end(world.m_Entities) && (*itr)->getUID() == uid)
+			if (auto itr = std::lower_bound(std::begin(container), std::end(container), uid, LessEntityByUID{});
+				itr != std::end(container) && (*itr)->getUID() == uid)
 			{
 				return itr;
 			}
-			return std::end(world.m_Entities);
+			return std::end(container);
 		}
 
 		auto takeDestructableEntityUIDs() noexcept
