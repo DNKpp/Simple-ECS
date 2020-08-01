@@ -140,5 +140,8 @@ namespace secs
 		//	}
 		//}
 	};
+
+	template <class... TComponentHandles>
+	ComponentStorage(TComponentHandles...) -> ComponentStorage<typename TComponentHandles::ComponentType...>;
 }
 #endif
