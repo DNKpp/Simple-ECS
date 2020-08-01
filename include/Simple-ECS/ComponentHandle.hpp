@@ -41,9 +41,19 @@ namespace secs
 		ComponentHandle(const ComponentHandle&) = delete;
 		ComponentHandle& operator =(const ComponentHandle&) = delete;
 
-		constexpr ComponentHandle(ComponentHandle&& other) noexcept
+		template <class USystem>
+		constexpr ComponentHandle(ComponentHandle<USystem>&& other)
 		{
 			*this = std::move(other);
+		}
+
+		template <class USystem, typename = std::enable_if_t<std::is_base_of_v<TSystem, USystem>>>
+		constexpr ComponentHandle& operator =(ComponentHandle<USystem>&& other) noexcept
+		{
+			ComponentHandle tmp{ std::move(*this) };
+			m_UID = std::exchange(other.m_UID, 0);
+			m_System = std::exchange(other.m_System, nullptr);
+			return *this;
 		}
 
 		constexpr ComponentHandle& operator =(ComponentHandle&& other) noexcept
