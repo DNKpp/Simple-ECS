@@ -29,8 +29,6 @@ namespace secs
 		template <class TSystem>
 		constexpr void registerSystem(TSystem&& system)
 		{
-			std::scoped_lock systemLock{ m_SystemMx };
-
 			using TComponentType = typename TSystem::ComponentType;
 			if (auto itr = findSystemStorage<TComponentType>(*this);
 				itr != std::end(m_Systems))
@@ -44,8 +42,6 @@ namespace secs
 		template <class TComponent>
 		const SystemBase<TComponent>* getSystemPtr() const noexcept
 		{
-			std::shared_lock systemLock{ m_SystemMx };
-
 			auto itr = findSystemStorage<TComponent>(*this);
 			return itr != std::end(m_Systems) ? static_cast<SystemBase<TComponent>*>(itr->system.get()) : nullptr;
 		}
@@ -115,8 +111,23 @@ namespace secs
 			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
 		}
 
+		void preUpdate() noexcept
+		{
+			for (auto& storage : m_Systems)
+				storage.system->preUpdate();
+		}
+
+		void update() noexcept
+		{
+			for (auto& storage : m_Systems)
+				storage.system->update();
+		}
+
 		void postUpdate() noexcept
 		{
+			for (auto& storage : m_Systems)
+				storage.system->postUpdate();
+
 			mergeNewEntities();
 			execEntityDestruction();
 		}
@@ -134,7 +145,6 @@ namespace secs
 			{
 			}
 		};
-		mutable std::shared_mutex m_SystemMx;
 		std::vector<SystemStorage> m_Systems;
 
 		template <class TComponent, class TWorld>
