@@ -73,7 +73,8 @@ namespace secs
 			std::scoped_lock entityLock{ m_NewEntityMx };
 
 			auto entityUID = m_NextUID++;
-			auto componentStorage = std::make_unique<ComponentStorage<TComponent...>>((getSystem<TComponent>().createComponent(entityUID), ...));
+			using ComponentStorage = secs::ComponentStorage<TComponent...>;
+			auto componentStorage = std::make_unique<ComponentStorage>(getSystem<TComponent>().createComponent(entityUID)...);
 
 			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
 			m_NewEntities.back()->changeState(EntityState::initializing);
