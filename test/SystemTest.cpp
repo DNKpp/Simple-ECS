@@ -6,7 +6,9 @@
 
 #include "catch.hpp"
 #include "../include/Simple-ECS/System.hpp"
+#include "../include/Simple-ECS/ComponentStorage.hpp"
 #include <optional>
+#include <memory>
 
 TEST_CASE("ComponentHandle tests", "[System]")
 {
@@ -84,6 +86,38 @@ TEST_CASE("ComponentHandle tests", "[System]")
 		REQUIRE(secHandle->isEmpty());
 		REQUIRE(!(*secHandle));
 	}
+}
+
+TEST_CASE("ComponentStorage tests", "[System]")
+{
+	using namespace secs;
+
+	struct TestComponent
+	{
+		float data = 0;
+	};
+
+	class TestSystem :
+		public secs::SystemBase<TestComponent>
+	{
+	};
+
+	TestSystem testSystem;
+	UID uid = 0;
+
+	{
+		std::unique_ptr<BaseComponentStorage> storage = std::make_unique<ComponentStorage<TestComponent>>(testSystem.createComponent(1));
+		REQUIRE(storage->hasComponent<TestComponent>());
+		REQUIRE(!storage->hasComponent<int>());
+
+		REQUIRE(std::size(testSystem) == 1);
+		REQUIRE(!std::empty(testSystem));
+		REQUIRE(testSystem.componentCount() == 1);
+	}
+
+	REQUIRE(std::size(testSystem) == 1);
+	REQUIRE(!std::empty(testSystem));
+	REQUIRE(testSystem.componentCount() == 0);
 }
 
 TEST_CASE("System update tests", "[System]")
