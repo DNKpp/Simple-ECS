@@ -16,7 +16,7 @@ namespace secs
 		none,
 		initializing,
 		running,
-		tearDown
+		teardown
 	};
 }
 

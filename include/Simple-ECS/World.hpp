@@ -213,8 +213,8 @@ namespace secs
 
 			for (auto& entity : oldEntities)
 			{
-				if (entity)
-					entity->changeState(EntityState::tearDown);
+				assert(entity);
+				entity->changeState(EntityState::teardown);
 			}
 		}
 
