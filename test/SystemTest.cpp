@@ -64,6 +64,7 @@ TEST_CASE("ComponentHandle tests", "[System]")
 		REQUIRE(!secHandle->isEmpty());
 		REQUIRE(secHandle);
 
+		// nothing should happen, because handle is already empty
 		handle.release();
 		REQUIRE(std::size(testSystem) == 1);
 		REQUIRE(!std::empty(testSystem));
@@ -71,6 +72,7 @@ TEST_CASE("ComponentHandle tests", "[System]")
 		REQUIRE(testSystem.getComponentPtr(uid) != nullptr);
 		REQUIRE(std::addressof(testSystem.getComponent(uid)) == std::addressof(secHandle->getComponent()));
 
+		// this should have an impact on the system component count
 		secHandle->release();
 		REQUIRE(std::size(testSystem) == 1);
 		REQUIRE(!std::empty(testSystem));
@@ -99,7 +101,7 @@ TEST_CASE("System update tests", "[System]")
 	public:
 		void preUpdate() noexcept override
 		{
-			foreachComponent(
+			forEachComponent(
 				[](UID entityUID, auto& component)
 				{
 					component.data += 1;
@@ -109,7 +111,7 @@ TEST_CASE("System update tests", "[System]")
 
 		void update(float delta) noexcept override
 		{
-			foreachComponent(
+			forEachComponent(
 				[](UID entityUID, auto& component)
 				{
 					component.data += 2;
@@ -119,7 +121,7 @@ TEST_CASE("System update tests", "[System]")
 
 		void postUpdate() noexcept override
 		{
-			foreachComponent(
+			forEachComponent(
 				[](UID entityUID, auto& component)
 				{
 					component.data += 4;

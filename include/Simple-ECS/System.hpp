@@ -150,7 +150,7 @@ namespace secs
 		}
 
 		template <class TComponentAction = utils::EmptyCallable<>>
-		void foreachComponent(TComponentAction&& action = TComponentAction())
+		void forEachComponent(TComponentAction&& action = TComponentAction())
 		{
 			for (auto& info : m_Components)
 			{
