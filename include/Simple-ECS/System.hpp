@@ -45,7 +45,7 @@ namespace secs
 		virtual ~ISystem() noexcept = default;
 
 		virtual void preUpdate() = 0;
-		virtual void update() = 0;
+		virtual void update(float delta) = 0;
 		virtual void postUpdate() = 0;
 
 	protected:
@@ -160,7 +160,7 @@ namespace secs
 		}
 
 		void preUpdate() noexcept override {}
-		void update() noexcept override {}
+		void update(float delta) noexcept override {}
 		void postUpdate() noexcept override {}
 
 	protected:

@@ -118,10 +118,10 @@ namespace secs
 				storage.system->preUpdate();
 		}
 
-		void update() noexcept
+		void update(float delta) noexcept
 		{
 			for (auto& storage : m_Systems)
-				storage.system->update();
+				storage.system->update(delta);
 		}
 
 		void postUpdate() noexcept
