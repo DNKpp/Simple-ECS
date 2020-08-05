@@ -24,6 +24,9 @@ namespace secs
 	class BaseComponentStorage
 	{
 	public:
+		/*ToDo: c++20
+		constexpr */virtual ~BaseComponentStorage() noexcept = default;
+
 		template <class TComponent>
 		/* ToDo: c++20
 		constexpr */bool hasComponent() const noexcept
@@ -75,6 +78,9 @@ namespace secs
 			BaseComponentStorage{},
 			m_ComponentHandles{ std::forward<HandleType<TComponent>>(handle)... }
 		{}
+
+		/*ToDo: c++20
+		constexpr */~ComponentStorage() noexcept = default;
 
 	private:
 		std::tuple<HandleType<TComponent>...> m_ComponentHandles;
