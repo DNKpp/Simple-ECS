@@ -182,6 +182,15 @@ namespace secs
 			return tmp;
 		}
 
+		void processNewEntities()
+		{
+			m_InitializingEntities = takeNewEntities();
+			if (std::empty(m_InitializingEntities))
+				return;
+
+			for (auto& entity : m_InitializingEntities)
+				entity->changeState(EntityState::initializing);
+		}
 
 		void processInitializingEntities()
 		{
@@ -196,18 +205,10 @@ namespace secs
 			m_InitializingEntities.clear();
 		}
 
-		void processNewEntities()
-		{
-			m_InitializingEntities = takeNewEntities();
-			if (std::empty(m_InitializingEntities))
-				return;
-
-			for (auto& entity : m_InitializingEntities)
-				entity->changeState(EntityState::initializing);
-		}
-
 		void processEntityDestruction()
 		{
+			m_TeardownEntities.clear();
+
 			auto destructableEntityUIDs = takeDestructableEntityUIDs();
 			if (std::empty(destructableEntityUIDs))
 				return;
