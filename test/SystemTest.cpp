@@ -107,7 +107,7 @@ TEST_CASE("System update tests", "[System]")
 			);
 		}
 
-		void update() noexcept override
+		void update(float delta) noexcept override
 		{
 			foreachComponent(
 				[](UID entityUID, auto& component)
@@ -135,7 +135,7 @@ TEST_CASE("System update tests", "[System]")
 	testSystem.preUpdate();
 	REQUIRE(handle.getComponent().data == 1);
 
-	testSystem.update();
+	testSystem.update(1.f);
 	REQUIRE(handle.getComponent().data == 3);
 
 	testSystem.postUpdate();

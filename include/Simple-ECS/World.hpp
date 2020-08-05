@@ -77,7 +77,6 @@ namespace secs
 			auto componentStorage = std::make_unique<ComponentStorage>(getSystem<TComponent>().createComponent(entityUID)...);
 
 			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
-			m_NewEntities.back()->changeState(EntityState::initializing);
 			return *m_NewEntities.back();
 		}
 
@@ -129,8 +128,9 @@ namespace secs
 			for (auto& storage : m_Systems)
 				storage.system->postUpdate();
 
-			mergeNewEntities();
-			execEntityDestruction();
+			processInitializingEntities();
+			processNewEntities();
+			processEntityDestruction();
 		}
 
 	private:
@@ -182,20 +182,31 @@ namespace secs
 			return tmp;
 		}
 
-		void mergeNewEntities()
+
+		void processInitializingEntities()
 		{
-			auto newEntities = takeNewEntities();
-			if (std::empty(newEntities))
+			if (std::empty(m_InitializingEntities))
 				return;
 
-			for (auto& entity : newEntities)
+			for (auto& entity : m_InitializingEntities)
 				entity->changeState(EntityState::running);
 
 			std::scoped_lock lock{ m_EntityMx };
-			m_Entities.insert(std::end(m_Entities), std::make_move_iterator(std::begin(newEntities)), std::make_move_iterator(std::end(newEntities)));
+			m_Entities.insert(std::end(m_Entities), std::make_move_iterator(std::begin(m_InitializingEntities)), std::make_move_iterator(std::end(m_InitializingEntities)));
+			m_InitializingEntities.clear();
 		}
 
-		void execEntityDestruction()
+		void processNewEntities()
+		{
+			m_InitializingEntities = takeNewEntities();
+			if (std::empty(m_InitializingEntities))
+				return;
+
+			for (auto& entity : m_InitializingEntities)
+				entity->changeState(EntityState::initializing);
+		}
+
+		void processEntityDestruction()
 		{
 			auto destructableEntityUIDs = takeDestructableEntityUIDs();
 			if (std::empty(destructableEntityUIDs))
@@ -205,13 +216,14 @@ namespace secs
 			destructableEntityUIDs.erase(std::unique(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs)), std::end(destructableEntityUIDs));
 
 			std::scoped_lock entityLock{ m_EntityMx };
-			auto oldEntities = std::move(m_Entities);
+			m_TeardownEntities = std::move(m_Entities);
 
-			std::set_difference(std::make_move_iterator(std::begin(oldEntities)), std::make_move_iterator(std::end(oldEntities)),
+			std::set_difference(std::make_move_iterator(std::begin(m_TeardownEntities)), std::make_move_iterator(std::end(m_TeardownEntities)),
 				std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs),
 				std::back_inserter(m_Entities), LessEntityByUID{});
 
-			for (auto& entity : oldEntities)
+			m_TeardownEntities.erase(std::remove(std::begin(m_TeardownEntities), std::end(m_TeardownEntities), nullptr), std::end(m_TeardownEntities));
+			for (auto& entity : m_TeardownEntities)
 			{
 				assert(entity);
 				entity->changeState(EntityState::teardown);
@@ -220,13 +232,17 @@ namespace secs
 
 		UID m_NextUID = 1;
 		mutable std::mutex m_NewEntityMx;
-		std::vector<std::unique_ptr<Entity>> m_NewEntities;	// ptr is simply used to get a consistent memory space for each entity
+		std::vector<std::unique_ptr<Entity>> m_NewEntities;
+
+		std::vector<std::unique_ptr<Entity>> m_InitializingEntities;
 
 		mutable std::shared_mutex m_EntityMx;
-		std::vector<std::unique_ptr<Entity>> m_Entities;	// ptr is simply used to get a consistent memory space for each entity
+		std::vector<std::unique_ptr<Entity>> m_Entities;
 
 		mutable std::mutex m_DestructableEntityMx;
 		std::vector<UID> m_DestructableEntityUIDs;
+
+		std::vector<std::unique_ptr<Entity>> m_TeardownEntities;
 	};
 }
 
