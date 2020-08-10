@@ -78,8 +78,10 @@ namespace secs
 		SystemBase(SystemBase&&) = default;
 		SystemBase& operator =(SystemBase&&) = default;
 
+		~SystemBase() noexcept = default;
+
 		template <class TComponentCreator = utils::EmptyCallable<TComponent>>
-		ComponentHandle createComponent(UID entityUID, TComponentCreator&& creator = TComponentCreator{})
+		[[nodiscard]] ComponentHandle createComponent(UID entityUID, TComponentCreator&& creator = TComponentCreator{})
 		{
 			if (auto itr = std::find(std::begin(m_Components), std::end(m_Components), std::nullopt);
 				itr != std::end(m_Components))
@@ -91,18 +93,18 @@ namespace secs
 			return { std::size(m_Components), *this };
 		}
 
-		constexpr bool hasComponent(UID uid) const noexcept
+		[[nodiscard]] constexpr bool hasComponent(UID uid) const noexcept
 		{
 			return 0u < uid && uid <= std::size(m_Components) && m_Components[uid - 1u];
 		}
 
-		constexpr const ComponentInfo& operator [](UID uid) const noexcept
+		[[nodiscard]] constexpr const ComponentInfo& operator [](UID uid) const noexcept
 		{
 			assert(hasComponent(uid));
 			return m_Components[uid - 1u];
 		}
 
-		constexpr const TComponent* getComponentPtr(UID uid) const noexcept
+		[[nodiscard]] constexpr const TComponent* getComponentPtr(UID uid) const noexcept
 		{
 			if (0u < uid && uid <= std::size(m_Components))
 			{
@@ -112,33 +114,33 @@ namespace secs
 			return nullptr;
 		}
 
-		constexpr TComponent* getComponentPtr(UID uid) noexcept
+		[[nodiscard]] constexpr TComponent* getComponentPtr(UID uid) noexcept
 		{
 			return const_cast<TComponent*>(std::as_const(*this).getComponentPtr(uid));
 		}
 
-		constexpr const TComponent& getComponent(UID uid) const noexcept
+		[[nodiscard]] constexpr const TComponent& getComponent(UID uid) const noexcept
 		{
 			assert(hasComponent(uid));
 			return m_Components[uid - 1u]->component;
 		}
 
-		constexpr TComponent& getComponent(UID uid) noexcept
+		[[nodiscard]] constexpr TComponent& getComponent(UID uid) noexcept
 		{
 			return const_cast<TComponent&>(std::as_const(*this).getComponent(uid));
 		}
 
-		constexpr std::size_t componentCount() const noexcept
+		[[nodiscard]] constexpr std::size_t componentCount() const noexcept
 		{
 			return std::size(m_Components) - std::count(std::begin(m_Components), std::end(m_Components), std::nullopt);
 		}
 
-		constexpr std::size_t size() const noexcept
+		[[nodiscard]] constexpr std::size_t size() const noexcept
 		{
 			return std::size(m_Components);
 		}
 
-		constexpr bool empty() const noexcept
+		[[nodiscard]] constexpr bool empty() const noexcept
 		{
 			return std::empty(m_Components);
 		}

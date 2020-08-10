@@ -12,12 +12,9 @@
 #include <cassert>
 #include <memory>
 #include <stdexcept>
-#include <tuple>
-#include <typeindex>
-#include <vector>
 
-#include "ComponentHandle.hpp"
 #include "ComponentStorage.hpp"
+#include "Concepts.hpp"
 #include "Defines.hpp"
 #include "Typedefs.hpp"
 
@@ -47,12 +44,12 @@ namespace secs
 			assert(m_ComponentStorage);
 		}
 
-		constexpr UID getUID() const noexcept
+		[[nodiscard]] constexpr UID getUID() const noexcept
 		{
 			return m_UID;
 		}
 
-		constexpr EntityState getState() const noexcept
+		[[nodiscard]] constexpr EntityState getState() const noexcept
 		{
 			return m_State;
 		}
@@ -67,29 +64,29 @@ namespace secs
 
 		}
 
-		template <class TComponent>
-		bool hasComponent() const noexcept
+		template <Component TComponent>
+		[[nodiscard]] bool hasComponent() const noexcept
 		{
 			assert(m_ComponentStorage);
 			return m_ComponentStorage->hasComponent<TComponent>();
 		}
 
-		template <class TComponent>
-		const TComponent* getComponentPtr() const noexcept
+		template <Component TComponent>
+		[[nodiscard]] const TComponent* getComponentPtr() const noexcept
 		{
 			assert(m_ComponentStorage);
 			return m_ComponentStorage->getComponent<TComponent>();
 		}
 
-		template <class TComponent>
-		TComponent* getComponentPtr() noexcept
+		template <Component TComponent>
+		[[nodiscard]] TComponent* getComponentPtr() noexcept
 		{
 			assert(m_ComponentStorage);
 			return m_ComponentStorage->getComponent< TComponent>();
 		}
 
-		template <class TComponent>
-		const TComponent& getComponent() const noexcept
+		template <Component TComponent>
+		[[nodiscard]] const TComponent& getComponent() const noexcept
 		{
 			assert(m_ComponentStorage);
 			auto component = m_ComponentStorage->getComponent<TComponent>();
@@ -98,7 +95,7 @@ namespace secs
 		}
 
 		template <class TComponent>
-		TComponent& getComponent() noexcept
+		[[nodiscard]] TComponent& getComponent() noexcept
 		{
 			return const_cast<TComponent&>(std::as_const(*this).getComponent<TComponent>());
 		}
@@ -112,24 +109,24 @@ namespace secs
 	struct LessEntityByUID
 	{
 		template <class TLhs, class TRhs>
-		bool operator ()(const TLhs& lhs, const TRhs& rhs) const noexcept
+		[[nodiscard]] bool operator ()(const TLhs& lhs, const TRhs& rhs) const noexcept
 		{
 			return getUID(lhs) < getUID(rhs);
 		}
 
 	private:
-		constexpr static UID getUID(const Entity& entity) noexcept
+		[[nodiscard]] constexpr static UID getUID(const Entity& entity) noexcept
 		{
 			return entity.getUID();
 		}
 
-		static UID getUID(const std::unique_ptr<Entity>& entityPtr) noexcept
+		[[nodiscard]] static UID getUID(const std::unique_ptr<Entity>& entityPtr) noexcept
 		{
 			assert(entityPtr);
 			return entityPtr->getUID();
 		}
 
-		constexpr static UID getUID(UID uid) noexcept
+		[[nodiscard]] constexpr static UID getUID(UID uid) noexcept
 		{
 			return uid;
 		}

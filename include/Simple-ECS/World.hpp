@@ -18,16 +18,17 @@
 #include <type_traits>
 #include <vector>
 
-#include "System.hpp"
-#include "Entity.hpp"
 #include "ComponentStorage.hpp"
+#include "Concepts.hpp"
+#include "Entity.hpp"
+#include "System.hpp"
 
 namespace secs
 {
 	class World
 	{
 	public:
-		template <class TSystem>
+		template <System TSystem>
 		constexpr void registerSystem(TSystem&& system)
 		{
 			using TComponentType = typename TSystem::ComponentType;
@@ -40,20 +41,20 @@ namespace secs
 				m_Systems.emplace_back(typeid(TComponentType), std::move(system));
 		}
 
-		template <class TComponent>
+		template <Component TComponent>
 		const SystemBase<TComponent>* getSystemPtr() const noexcept
 		{
 			auto itr = findSystemStorage<TComponent>(*this);
 			return itr != std::end(m_Systems) ? static_cast<SystemBase<TComponent>*>(itr->system.get()) : nullptr;
 		}
 
-		template <class TComponent>
+		template <Component TComponent>
 		SystemBase<TComponent>* getSystemPtr() noexcept
 		{
 			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).getSystem<TComponent>());
 		}
 
-		template <class TComponent>
+		template <Component TComponent>
 		const SystemBase<TComponent>& getSystem() const
 		{
 			if (auto ptr = getSystemPtr<TComponent>())
@@ -62,13 +63,13 @@ namespace secs
 			throw SystemError("System not found: "s + typeid(SystemBase<TComponent>).name());
 		}
 
-		template <class TComponent>
+		template <Component TComponent>
 		SystemBase<TComponent>& getSystem()
 		{
 			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).getSystem<TComponent>());
 		}
 
-		template <class... TComponent>
+		template <Component... TComponent>
 		Entity& createEntity()
 		{
 			std::scoped_lock entityLock{ m_NewEntityMx };
@@ -81,7 +82,7 @@ namespace secs
 			return *m_NewEntities.back();
 		}
 
-		void destroyEntityLater(UID uid) noexcept
+		void destroyEntityLater(UID uid)
 		{
 			std::scoped_lock lock{ m_DestructableEntityMx };
 			m_DestructableEntityUIDs.emplace_back(uid);

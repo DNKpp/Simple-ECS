@@ -14,6 +14,7 @@
 
 #include "ComponentHandle.hpp"
 #include "ComponentTraits.hpp"
+#include "Concepts.hpp"
 #include "Defines.hpp"
 #include "Typedefs.hpp"
 
@@ -24,32 +25,37 @@ namespace secs
 	class BaseComponentStorage
 	{
 	public:
+		constexpr BaseComponentStorage(const BaseComponentStorage&) noexcept = delete;
+		constexpr BaseComponentStorage& operator =(const BaseComponentStorage&) noexcept = delete;
+		constexpr BaseComponentStorage(BaseComponentStorage&&) noexcept = delete;
+		constexpr BaseComponentStorage& operator =(BaseComponentStorage&&) noexcept = delete;
+		
 		/*ToDo: c++20
 		constexpr */virtual ~BaseComponentStorage() noexcept = default;
 
 		template <class TComponent>
-		/* ToDo: c++20
-		constexpr */bool hasComponent() const noexcept
+		// ToDo: c++20
+		[[nodiscard]] /*constexpr */bool hasComponent() const noexcept
 		{
 			return hasComponentImpl(typeid(TComponent));
 		}
 
 		template <class TComponent>
-		/* ToDo: c++20
-		constexpr */const TComponent* getComponent() const noexcept
+		// ToDo: c++20
+		[[nodiscard]] /*constexpr */const TComponent* getComponent() const noexcept
 		{
 			return static_cast<const TComponent*>(getComponentImpl(typeid(TComponent)));
 		}
 
 		template <class TComponent>
-		/* ToDo: c++20
-		constexpr */TComponent* getComponent() noexcept
+		// ToDo: c++20
+		[[nodiscard]] /*constexpr */TComponent* getComponent() noexcept
 		{
 			return static_cast<TComponent*>(getComponentImpl(typeid(TComponent)));
 		}
 
-		/* ToDo: c++20
-		constexpr */void onEntityStateChanged(Entity& entity) noexcept
+		// ToDo: c++20
+		 /*constexpr */void onEntityStateChanged(Entity& entity) noexcept
 		{
 			onEntityStateChangedImpl(entity);
 		}
@@ -59,21 +65,27 @@ namespace secs
 
 	private:
 		// ToDo: c++20
-		/*constexpr*/ virtual bool hasComponentImpl(std::type_index typeIndex) const noexcept = 0;
-		/*constexpr*/ virtual const void* getComponentImpl(std::type_index typeIndex) const noexcept = 0;
-		/*constexpr*/ virtual void* getComponentImpl(std::type_index typeIndex) noexcept = 0;
+		[[nodiscard]] /*constexpr*/ virtual bool hasComponentImpl(std::type_index typeIndex) const noexcept = 0;
+		[[nodiscard]] /*constexpr*/ virtual const void* getComponentImpl(std::type_index typeIndex) const noexcept = 0;
+		[[nodiscard]] /*constexpr*/ virtual void* getComponentImpl(std::type_index typeIndex) noexcept = 0;
 		/*constexpr*/ virtual void onEntityStateChangedImpl(Entity& entity) noexcept = 0;
 	};
 
-	template <class... TComponent>
-	class ComponentStorage :
+	template <Component... TComponent>
+	class ComponentStorage final :
 		public BaseComponentStorage
 	{
 	private:
-		template <class UComponent>
-		using HandleType = typename ComponentTraits<UComponent>::ComponentHandleType;
+		template <Component T2Component>
+		using HandleType = typename ComponentTraits<T2Component>::ComponentHandleType;
 
 	public:
+		constexpr ComponentStorage() noexcept = delete;
+		constexpr ComponentStorage(const ComponentStorage&) noexcept = delete;
+		constexpr ComponentStorage& operator =(const ComponentStorage&) noexcept = delete;
+		constexpr ComponentStorage(ComponentStorage&&) noexcept = delete;
+		constexpr ComponentStorage& operator =(ComponentStorage&&) noexcept = delete;
+		
 		constexpr ComponentStorage(HandleType<TComponent>&&... handle) noexcept :
 			BaseComponentStorage{},
 			m_ComponentHandles{ std::forward<HandleType<TComponent>>(handle)... }
@@ -85,14 +97,14 @@ namespace secs
 	private:
 		std::tuple<HandleType<TComponent>...> m_ComponentHandles;
 
-		/* ToDo: c++20
-		constexpr */bool hasComponentImpl(std::type_index typeIndex) const noexcept override
+		// ToDo: c++20
+		[[nodiscard]] /*constexpr */bool hasComponentImpl(std::type_index typeIndex) const noexcept override
 		{
 			return ((std::type_index(typeid(TComponent)) == typeIndex) || ...);
 		}
 
-		/* ToDo: c++20
-		constexpr */const void* getComponentImpl(std::type_index typeIndex) const noexcept override
+		// ToDo: c++20
+		[[nodiscard]] /*constexpr */const void* getComponentImpl(std::type_index typeIndex) const noexcept override
 		{
 			const void* component = nullptr;
 			auto find = [&component, typeIndex](const auto& param)
@@ -107,20 +119,20 @@ namespace secs
 			return component;
 		}
 
-		/* ToDo: c++20
-		constexpr */void* getComponentImpl(std::type_index typeIndex) noexcept override
+		// ToDo: c++20
+		[[nodiscard]] /*constexpr */void* getComponentImpl(std::type_index typeIndex) noexcept override
 		{
 			return const_cast<void*>(std::as_const(*this).getComponentImpl(typeIndex));
 		}
 
-		/* ToDo: c++20
-		constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
+		// ToDo: c++20
+		[[nodiscard]] /*constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
 		{
 			(emitEntityStateChange(std::get<HandleType<TComponent>>(m_ComponentHandles), entity), ...);
 		}
 
 		template <class THandle>
-		constexpr void emitEntityStateChange(THandle& handle, Entity& entity) noexcept
+		constexpr static void emitEntityStateChange(THandle& handle, Entity& entity) noexcept
 		{
 			assert(!handle.isEmpty());
 			handle.getSystem().onEntityStateChanged(handle.getUID(), entity);
