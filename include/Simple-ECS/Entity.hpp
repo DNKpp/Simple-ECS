@@ -94,7 +94,7 @@ namespace secs
 			return *component;
 		}
 
-		template <class TComponent>
+		template <Component TComponent>
 		[[nodiscard]] TComponent& getComponent() noexcept
 		{
 			return const_cast<TComponent&>(std::as_const(*this).getComponent<TComponent>());
