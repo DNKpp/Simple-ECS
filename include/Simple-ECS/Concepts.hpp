@@ -15,14 +15,14 @@
 namespace secs
 {
 	template <class T>
-	concept Component = std::copyable<T>;
+	concept Component = std::movable<T>;
 
 	template <class T>
 	concept System = std::move_constructible<T> && requires (T system)
 	{
-		T::ComponentType;
-		T::ComponentHandle;
-	};
+		typename T::ComponentType;
+		typename T::ComponentHandle;
+	} && Component<typename T::ComponentType>;
 
 }
 
