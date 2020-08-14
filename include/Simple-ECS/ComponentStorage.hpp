@@ -137,7 +137,7 @@ namespace secs
 		}
 
 		// ToDo: c++20
-		 /*constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
+		/*constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
 		{
 			(emitEntityStateChange(std::get<HandleType<TComponent>>(m_ComponentHandles), entity), ...);
 		}
