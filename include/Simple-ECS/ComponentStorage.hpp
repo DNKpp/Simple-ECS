@@ -60,6 +60,8 @@ namespace secs
 			onEntityStateChangedImpl(entity);
 		}
 
+		virtual void setupEntity(Entity& entity) noexcept = 0;
+
 	protected:
 		constexpr BaseComponentStorage() noexcept = default;
 
@@ -97,6 +99,15 @@ namespace secs
 	private:
 		std::tuple<HandleType<TComponent>...> m_ComponentHandles;
 
+		void setupEntity(Entity& entity) noexcept override
+		{
+			auto exec = [&entity](auto& handle)
+			{
+				handle.setupEntity(entity);
+			};
+			(exec(std::get<HandleType<TComponent>>(m_ComponentHandles)), ...);
+		}
+
 		// ToDo: c++20
 		[[nodiscard]] /*constexpr */bool hasComponentImpl(std::type_index typeIndex) const noexcept override
 		{
@@ -126,7 +137,7 @@ namespace secs
 		}
 
 		// ToDo: c++20
-		[[nodiscard]] /*constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
+		 /*constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
 		{
 			(emitEntityStateChange(std::get<HandleType<TComponent>>(m_ComponentHandles), entity), ...);
 		}

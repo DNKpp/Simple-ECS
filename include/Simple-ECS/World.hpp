@@ -76,7 +76,7 @@ namespace secs
 
 			auto entityUID = m_NextUID++;
 			using ComponentStorage = secs::ComponentStorage<TComponent...>;
-			auto componentStorage = std::make_unique<ComponentStorage>(getSystem<TComponent>().createComponent(entityUID)...);
+			auto componentStorage = std::make_unique<ComponentStorage>(getSystem<TComponent>().createComponent()...);
 
 			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
 			return *m_NewEntities.back();

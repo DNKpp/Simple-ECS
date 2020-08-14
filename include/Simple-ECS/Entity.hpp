@@ -42,6 +42,7 @@ namespace secs
 		{
 			assert(uid);
 			assert(m_ComponentStorage);
+			m_ComponentStorage->setupEntity(*this);
 		}
 
 		[[nodiscard]] constexpr UID getUID() const noexcept

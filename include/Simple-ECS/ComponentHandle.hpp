@@ -16,6 +16,8 @@
 
 namespace secs
 {
+	class Entity;
+	
 	template <class TSystem>
 	class ComponentHandle
 	{
@@ -64,28 +66,33 @@ namespace secs
 			return *this;
 		}
 
-		constexpr UID getUID() const noexcept
+		void setupEntity(Entity& entity) noexcept
+		{
+			getSystem().setComponentEntity(getUID(), entity);
+		}
+
+		[[nodiscard]] constexpr UID getUID() const noexcept
 		{
 			return m_UID;
 		}
 
-		constexpr SystemType& getSystem() const noexcept
+		[[nodiscard]] constexpr SystemType& getSystem() const noexcept
 		{
 			assert(m_System);
 			return *m_System;
 		}
 
-		constexpr SystemType* getSystemPtr() const noexcept
+		[[nodiscard]] constexpr SystemType* getSystemPtr() const noexcept
 		{
 			return m_System;
 		}
 
-		constexpr ComponentType& getComponent() const noexcept
+		[[nodiscard]] constexpr ComponentType& getComponent() const noexcept
 		{
 			return getSystem().getComponent(m_UID);
 		}
 
-		constexpr bool isEmpty() const noexcept
+		[[nodiscard]] constexpr bool isEmpty() const noexcept
 		{
 			return m_UID == 0;
 		}

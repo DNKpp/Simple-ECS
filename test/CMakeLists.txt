@@ -9,6 +9,10 @@ add_executable(Test
     "main.cpp"
     "SystemTest.cpp" "WorldTest.cpp")
 
+target_include_directories(${PROJECT_NAME}
+    PRIVATE "${CMAKE_SOURCE_DIR}/../include/"
+)
+
 set_property(TARGET Test
     PROPERTY CXX_STANDARD 20)
 

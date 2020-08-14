@@ -5,10 +5,14 @@
 //          https://www.boost.org/LICENSE_1_0.txt)
 
 #include "catch.hpp"
-#include "../include/Simple-ECS/System.hpp"
-#include "../include/Simple-ECS/ComponentStorage.hpp"
+
+#include "Simple-ECS/Entity.hpp"
+#include "Simple-ECS/System.hpp"
+#include "Simple-ECS/ComponentStorage.hpp"
+
 #include <optional>
 #include <memory>
+
 
 TEST_CASE("ComponentHandle tests", "[System]")
 {
@@ -28,7 +32,7 @@ TEST_CASE("ComponentHandle tests", "[System]")
 	REQUIRE(std::empty(testSystem));
 	REQUIRE(testSystem.componentCount() == 0);
 
-	auto handle = testSystem.createComponent(1);
+	auto handle = testSystem.createComponent();
 	auto uid = handle.getUID();
 	REQUIRE(std::size(testSystem) == 1);
 	REQUIRE(!std::empty(testSystem));
@@ -98,7 +102,7 @@ TEST_CASE("ComponentStorage tests", "[System]")
 	};
 
 	class TestSystem :
-		public secs::SystemBase<TestComponent>
+		public SystemBase<TestComponent>
 	{
 	};
 
@@ -106,7 +110,7 @@ TEST_CASE("ComponentStorage tests", "[System]")
 	UID uid = 0;
 
 	{
-		std::unique_ptr<BaseComponentStorage> storage = std::make_unique<ComponentStorage<TestComponent>>(testSystem.createComponent(1));
+		std::unique_ptr<BaseComponentStorage> storage = std::make_unique<ComponentStorage<TestComponent>>(testSystem.createComponent());
 		REQUIRE(storage->hasComponent<TestComponent>());
 		REQUIRE(!storage->hasComponent<int>());
 
@@ -126,7 +130,7 @@ TEST_CASE("System update tests", "[System]")
 
 	struct TestComponent
 	{
-		float data = 0;
+		int data = 0;
 	};
 
 	class TestSystem :
@@ -136,7 +140,7 @@ TEST_CASE("System update tests", "[System]")
 		void preUpdate() noexcept override
 		{
 			forEachComponent(
-				[](UID entityUID, auto& component)
+				[](secs::Entity& entity, auto& component)
 				{
 					component.data += 1;
 				}
@@ -146,7 +150,7 @@ TEST_CASE("System update tests", "[System]")
 		void update(float delta) noexcept override
 		{
 			forEachComponent(
-				[](UID entityUID, auto& component)
+				[](secs::Entity& entity, auto& component)
 				{
 					component.data += 2;
 				}
@@ -156,7 +160,7 @@ TEST_CASE("System update tests", "[System]")
 		void postUpdate() noexcept override
 		{
 			forEachComponent(
-				[](UID entityUID, auto& component)
+				[](secs::Entity& entity, auto& component)
 				{
 					component.data += 4;
 				}
@@ -166,14 +170,18 @@ TEST_CASE("System update tests", "[System]")
 
 	TestSystem testSystem;
 
-	auto handle = testSystem.createComponent(1);
+	//auto handle = testSystem.createComponent();
+	//auto handleRef = 
+	//secs::Entity entity{ 1, std::make_unique<secs::ComponentStorage<TestComponent>>() };
 
-	testSystem.preUpdate();
-	REQUIRE(handle.getComponent().data == 1);
+	//handle.setupEntity(entity);
 
-	testSystem.update(1.f);
-	REQUIRE(handle.getComponent().data == 3);
+	//testSystem.preUpdate();
+	//REQUIRE(handle.getComponent().data == 1);
 
-	testSystem.postUpdate();
-	REQUIRE(handle.getComponent().data == 7);
+	//testSystem.update(1.f);
+	//REQUIRE(handle.getComponent().data == 3);
+
+	//testSystem.postUpdate();
+	//REQUIRE(handle.getComponent().data == 7);
 }

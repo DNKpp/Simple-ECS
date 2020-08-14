@@ -20,6 +20,8 @@
 
 namespace secs
 {
+	class Entity;
+	
 	class SystemError :
 		public std::runtime_error
 	{
@@ -42,6 +44,8 @@ namespace secs
 		constexpr ISystem(ISystem&&) noexcept = default;
 		constexpr ISystem& operator =(ISystem&&) noexcept = default;
 
+		/*ToDo: c++20
+		constexpr*/
 		virtual ~ISystem() noexcept = default;
 
 		virtual void preUpdate() = 0;
@@ -53,6 +57,7 @@ namespace secs
 	};
 
 	class Entity;
+	class World;
 
 	template <class TComponent>
 	class SystemBase :
@@ -64,7 +69,7 @@ namespace secs
 
 		struct ComponentInfo
 		{
-			UID entityUID;
+			Entity* entity;
 			TComponent component;
 		};
 
@@ -78,18 +83,18 @@ namespace secs
 		SystemBase(SystemBase&&) = default;
 		SystemBase& operator =(SystemBase&&) = default;
 
-		~SystemBase() noexcept = default;
+		~SystemBase() noexcept override = default;
 
 		template <class TComponentCreator = utils::EmptyCallable<TComponent>>
-		[[nodiscard]] ComponentHandle createComponent(UID entityUID, TComponentCreator&& creator = TComponentCreator{})
+		[[nodiscard]] ComponentHandle createComponent(TComponentCreator&& creator = TComponentCreator{})
 		{
 			if (auto itr = std::find(std::begin(m_Components), std::end(m_Components), std::nullopt);
 				itr != std::end(m_Components))
 			{
-				itr->emplace(ComponentInfo{ entityUID, creator() });
+				itr->emplace(ComponentInfo{ nullptr, creator() });
 				return { static_cast<UID>(std::distance(std::begin(m_Components), itr) + 1u), *this };
 			}
-			m_Components.emplace_back(ComponentInfo{ entityUID, creator() });
+			m_Components.emplace_back(ComponentInfo{ nullptr, creator() });
 			return { std::size(m_Components), *this };
 		}
 
@@ -157,7 +162,10 @@ namespace secs
 			for (auto& info : m_Components)
 			{
 				if (info)
-					action(info->entityUID, info->component);
+				{
+					assert(info->entity);
+					action(*info->entity, info->component);
+				}
 			}
 		}
 
@@ -174,6 +182,12 @@ namespace secs
 
 	private:
 		std::deque<std::optional<ComponentInfo>> m_Components;
+
+		void setComponentEntity(UID componentUID, Entity& entity) noexcept
+		{
+			assert(hasComponent(componentUID));
+			m_Components[componentUID - 1u]->entity = &entity;
+		}
 
 		constexpr void deleteComponent(UID uid) noexcept
 		{
