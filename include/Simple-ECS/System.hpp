@@ -95,24 +95,24 @@ namespace secs
 				itr != std::end(m_Components))
 			{
 				itr->emplace(ComponentInfo{ nullptr, creator() });
-				return { static_cast<UID>(std::distance(std::begin(m_Components), itr) + 1u), *this };
+				return { static_cast<Uid>(std::distance(std::begin(m_Components), itr) + 1u), *this };
 			}
 			m_Components.emplace_back(ComponentInfo{ nullptr, creator() });
 			return { std::size(m_Components), *this };
 		}
 
-		[[nodiscard]] constexpr bool hasComponent(UID uid) const noexcept
+		[[nodiscard]] constexpr bool hasComponent(Uid uid) const noexcept
 		{
 			return 0u < uid && uid <= std::size(m_Components) && m_Components[uid - 1u];
 		}
 
-		[[nodiscard]] constexpr const ComponentInfo& operator [](UID uid) const noexcept
+		[[nodiscard]] constexpr const ComponentInfo& operator [](Uid uid) const noexcept
 		{
 			assert(hasComponent(uid));
 			return m_Components[uid - 1u];
 		}
 
-		[[nodiscard]] constexpr const TComponent* getComponentPtr(UID uid) const noexcept
+		[[nodiscard]] constexpr const TComponent* getComponentPtr(Uid uid) const noexcept
 		{
 			if (0u < uid && uid <= std::size(m_Components))
 			{
@@ -122,18 +122,18 @@ namespace secs
 			return nullptr;
 		}
 
-		[[nodiscard]] constexpr TComponent* getComponentPtr(UID uid) noexcept
+		[[nodiscard]] constexpr TComponent* getComponentPtr(Uid uid) noexcept
 		{
 			return const_cast<TComponent*>(std::as_const(*this).getComponentPtr(uid));
 		}
 
-		[[nodiscard]] constexpr const TComponent& getComponent(UID uid) const noexcept
+		[[nodiscard]] constexpr const TComponent& getComponent(Uid uid) const noexcept
 		{
 			assert(hasComponent(uid));
 			return m_Components[uid - 1u]->component;
 		}
 
-		[[nodiscard]] constexpr TComponent& getComponent(UID uid) noexcept
+		[[nodiscard]] constexpr TComponent& getComponent(Uid uid) noexcept
 		{
 			return const_cast<TComponent&>(std::as_const(*this).getComponent(uid));
 		}
@@ -153,7 +153,7 @@ namespace secs
 			return std::empty(m_Components);
 		}
 
-		constexpr void onEntityStateChanged(UID componentUID, Entity& entity) noexcept
+		constexpr void onEntityStateChanged(Uid componentUID, Entity& entity) noexcept
 		{
 			if (auto component = getComponentPtr(componentUID))
 			{
@@ -197,13 +197,13 @@ namespace secs
 	private:
 		std::deque<std::optional<ComponentInfo>> m_Components;
 
-		void setComponentEntity(UID componentUID, Entity& entity) noexcept
+		void setComponentEntity(Uid componentUID, Entity& entity) noexcept
 		{
 			assert(hasComponent(componentUID));
 			m_Components[componentUID - 1u]->entity = &entity;
 		}
 
-		constexpr void deleteComponent(UID uid) noexcept
+		constexpr void deleteComponent(Uid uid) noexcept
 		{
 			if (uid <= std::size(m_Components))
 				m_Components[uid - 1].reset();
