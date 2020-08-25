@@ -110,25 +110,25 @@ namespace secs
 			return *m_NewEntities.back();
 		}
 
-		void destroyEntityLater(UID uid)
+		void destroyEntityLater(Uid uid)
 		{
 			std::scoped_lock lock{ m_DestructibleEntityMx };
 			m_DestructibleEntityUIDs.emplace_back(uid);
 		}
 
-		[[nodiscard]] const Entity* findEntityPtr(UID uid) const noexcept
+		[[nodiscard]] const Entity* findEntityPtr(Uid uid) const noexcept
 		{
 			std::shared_lock entityLock{ m_EntityMx };
 			const auto itr = findEntityItr(m_Entities, uid);
 			return itr != std::end(m_Entities) ? &**itr : nullptr;
 		}
 
-		[[nodiscard]] Entity* findEntityPtr(UID uid) noexcept
+		[[nodiscard]] Entity* findEntityPtr(Uid uid) noexcept
 		{
 			return const_cast<Entity*>(std::as_const(*this).findEntityPtr(uid));
 		}
 
-		[[nodiscard]] const Entity& findEntity(UID uid) const
+		[[nodiscard]] const Entity& findEntity(Uid uid) const
 		{
 			if (const auto ptr = findEntityPtr(uid))
 				return *ptr;
@@ -136,7 +136,7 @@ namespace secs
 			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
 		}
 
-		[[nodiscard]] Entity& findEntity(UID uid)
+		[[nodiscard]] Entity& findEntity(Uid uid)
 		{
 			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
 		}
@@ -207,7 +207,7 @@ namespace secs
 		}
 
 		template <class TContainer>
-		constexpr static auto findEntityItr(TContainer& container, UID uid) noexcept -> decltype(std::begin(container))
+		constexpr static auto findEntityItr(TContainer& container, Uid uid) noexcept -> decltype(std::begin(container))
 		{
 			if (auto itr = std::lower_bound(std::begin(container), std::end(container), uid, LessEntityByUID{});
 				itr != std::end(container) && (*itr)->getUID() == uid)
@@ -284,7 +284,7 @@ namespace secs
 			}
 		}
 
-		UID m_NextUID = 1;
+		Uid m_NextUID = 1;
 		mutable std::mutex m_NewEntityMx;
 		std::vector<std::unique_ptr<Entity>> m_NewEntities;
 
@@ -294,7 +294,7 @@ namespace secs
 		std::vector<std::unique_ptr<Entity>> m_Entities;
 
 		mutable std::mutex m_DestructibleEntityMx;
-		std::vector<UID> m_DestructibleEntityUIDs;
+		std::vector<Uid> m_DestructibleEntityUIDs;
 
 		std::vector<std::unique_ptr<Entity>> m_TeardownEntities;
 	};
