@@ -226,14 +226,13 @@ namespace secs
 			return tmp;
 		}
 
-		void processNewEntities()
+		void processNewEntities() noexcept
 		{
 			m_InitializingEntities = takeNewEntities();
-			if (std::empty(m_InitializingEntities))
-				return;
-
 			for (auto& entity : m_InitializingEntities)
+			{
 				entity->changeState(EntityState::initializing);
+			}
 		}
 
 		void processInitializingEntities()

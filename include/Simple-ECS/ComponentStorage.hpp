@@ -94,7 +94,7 @@ namespace secs
 		{}
 
 		/*ToDo: c++20
-		constexpr */~ComponentStorage() noexcept = default;
+		constexpr */~ComponentStorage() noexcept override = default;
 
 	private:
 		std::tuple<HandleType<TComponent>...> m_ComponentHandles;
