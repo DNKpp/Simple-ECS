@@ -1,4 +1,3 @@
-
 //          Copyright Dominic Koepke 2020 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -48,7 +47,7 @@ namespace secs
 		}
 
 		template <System TSystem>
-		[[nodiscard]] TSystem*  getSystemPtr() noexcept
+		[[nodiscard]] TSystem* getSystemPtr() noexcept
 		{
 			return const_cast<TSystem*>(std::as_const(*this).getSystem<TSystem>());
 		}
@@ -74,7 +73,7 @@ namespace secs
 			std::scoped_lock entityLock{ m_NewEntityMx };
 
 			auto entityUID = m_NextUID++;
-			using ComponentStorage = secs::ComponentStorage<TComponent...>;
+			using ComponentStorage = ComponentStorage<TComponent...>;
 			auto componentStorage = std::make_unique<ComponentStorage>(getSystem<TComponent>().createComponent()...);
 
 			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
@@ -90,7 +89,7 @@ namespace secs
 		[[nodiscard]] const Entity* findEntityPtr(UID uid) const noexcept
 		{
 			std::shared_lock entityLock{ m_EntityMx };
-			auto itr = findEntityItr(m_Entities, uid);
+			const auto itr = findEntityItr(m_Entities, uid);
 			return itr != std::end(m_Entities) ? &**itr : nullptr;
 		}
 
@@ -101,7 +100,7 @@ namespace secs
 
 		[[nodiscard]] const Entity& findEntity(UID uid) const
 		{
-			if (auto ptr = findEntityPtr(uid))
+			if (const auto ptr = findEntityPtr(uid))
 				return *ptr;
 			using namespace std::string_literals;
 			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
@@ -112,19 +111,19 @@ namespace secs
 			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
 		}
 
-		void preUpdate() noexcept
+		void preUpdate()
 		{
 			for (auto& storage : m_Systems)
 				storage.system->preUpdate();
 		}
 
-		void update(float delta) noexcept
+		void update(float delta)
 		{
 			for (auto& storage : m_Systems)
 				storage.system->update(delta);
 		}
 
-		void postUpdate() noexcept
+		void postUpdate()
 		{
 			for (auto& storage : m_Systems)
 				storage.system->postUpdate();
@@ -147,15 +146,18 @@ namespace secs
 			{
 			}
 		};
+
 		std::vector<SystemStorage> m_Systems;
 
 		template <class TSystem, class TWorld>
 		constexpr static decltype(auto) findSystemStorage(TWorld&& world) noexcept
 		{
 			std::type_index typeIndex = typeid(std::decay_t<TSystem>);
-			return std::find_if(std::begin(world.m_Systems), std::end(world.m_Systems),
-				[typeIndex](const auto& info) { return info.type == typeIndex; }
-			);
+			return std::find_if(
+								std::begin(world.m_Systems),
+								std::end(world.m_Systems),
+								[typeIndex](const auto& info) { return info.type == typeIndex; }
+								);
 		}
 
 		template <class TContainer>
@@ -220,9 +222,14 @@ namespace secs
 			std::scoped_lock entityLock{ m_EntityMx };
 			m_TeardownEntities = std::move(m_Entities);
 
-			std::set_difference(std::make_move_iterator(std::begin(m_TeardownEntities)), std::make_move_iterator(std::end(m_TeardownEntities)),
-				std::begin(destructibleEntityUIDs), std::end(destructibleEntityUIDs),
-				std::back_inserter(m_Entities), LessEntityByUID{});
+			std::set_difference(
+								std::make_move_iterator(std::begin(m_TeardownEntities)),
+								std::make_move_iterator(std::end(m_TeardownEntities)),
+								std::begin(destructibleEntityUIDs),
+								std::end(destructibleEntityUIDs),
+								std::back_inserter(m_Entities),
+								LessEntityByUID{}
+								);
 
 			m_TeardownEntities.erase(std::remove(std::begin(m_TeardownEntities), std::end(m_TeardownEntities), nullptr), std::end(m_TeardownEntities));
 			for (auto& entity : m_TeardownEntities)

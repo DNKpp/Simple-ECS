@@ -1,4 +1,3 @@
-
 //          Copyright Dominic Koepke 2020 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -9,9 +8,10 @@
 
 #pragma once
 
-#include <queue>
-#include <optional>
 #include <cassert>
+#include <cstddef>
+#include <optional>
+#include <queue>
 #include <stdexcept>
 
 #include "ComponentHandle.hpp"
@@ -21,18 +21,20 @@
 namespace secs
 {
 	class Entity;
-	
+
 	class SystemError :
 		public std::runtime_error
 	{
 	public:
 		SystemError(const std::string& msg) :
 			std::runtime_error(msg)
-		{}
+		{
+		}
 
 		SystemError(const char* msg) :
 			std::runtime_error(msg)
-		{}
+		{
+		}
 	};
 
 	class ISystem
@@ -75,13 +77,13 @@ namespace secs
 
 	public:
 		using ComponentType = TComponent;
-		using ComponentHandle = secs::ComponentHandle<SystemBase<TComponent>>;
+		using ComponentHandle = ComponentHandle<SystemBase<TComponent>>;
 
 		SystemBase(const SystemBase&) = delete;
 		SystemBase& operator =(const SystemBase&) = delete;
 
-		SystemBase(SystemBase&&) = default;
-		SystemBase& operator =(SystemBase&&) = default;
+		SystemBase(SystemBase&&) /* NOT noexcept*/ = default;
+		SystemBase& operator =(SystemBase&&) /* NOT noexcept*/ = default;
 
 		~SystemBase() noexcept override = default;
 
@@ -153,7 +155,10 @@ namespace secs
 		constexpr void onEntityStateChanged(UID componentUID, Entity& entity)
 		{
 			if (auto component = getComponentPtr(componentUID))
+			{
+				assert(component);
 				onEntityStateChangedImpl(*component, entity);
+			}
 		}
 
 		template <class TComponentAction = utils::EmptyCallable<>>
@@ -169,9 +174,17 @@ namespace secs
 			}
 		}
 
-		void preUpdate() noexcept override {}
-		void update(float delta) noexcept override {}
-		void postUpdate() noexcept override {}
+		void preUpdate() override
+		{
+		}
+
+		void update(float delta) override
+		{
+		}
+
+		void postUpdate() override
+		{
+		}
 
 	protected:
 		SystemBase() = default;
