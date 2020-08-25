@@ -11,6 +11,7 @@
 #include <iterator>
 #include <memory>
 #include <mutex>
+#include <ranges>
 #include <shared_mutex>
 #include <string>
 #include <typeinfo>
@@ -33,10 +34,11 @@ namespace secs
 			if (auto itr = findSystemStorage<TSystem>(*this);
 				itr != std::end(m_Systems))
 			{
-				itr->system = std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system));
-				return **itr;
+				*itr = { typeid(TSystem), typeid(typename TSystem::ComponentType), std::forward<TSystem>(system) };
+				return static_cast<TSystem&>(*itr->system);
 			}
-			return *m_Systems.emplace_back(typeid(TSystem), std::forward<TSystem>(system));
+			auto& ref = m_Systems.emplace_back(typeid(TSystem), typeid(typename TSystem::ComponentType), std::forward<TSystem>(system));
+			return static_cast<TSystem&>(*ref.system);
 		}
 
 		template <System TSystem>
@@ -67,6 +69,34 @@ namespace secs
 			return const_cast<TSystem&>(std::as_const(*this).getSystem<TSystem>());
 		}
 
+		template <Component TComponent>
+		[[nodiscard]] const SystemBase<TComponent>* getSystemPtrForComponent() const noexcept
+		{
+			auto itr = findSystemStorageForComponent<TComponent>(*this);
+			return itr != std::end(m_Systems) ? static_cast<SystemBase<TComponent>*>(itr->system.get()) : nullptr;
+		}
+
+		template <Component TComponent>
+		[[nodiscard]] SystemBase<TComponent>* getSystemPtrForComponent() noexcept
+		{
+			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).getSystemPtrForComponent<TComponent>());
+		}
+
+		template <Component TComponent>
+		[[nodiscard]] const SystemBase<TComponent>& getSystemForComponent() const
+		{
+			if (auto ptr = getSystemPtrForComponent<TComponent>())
+				return *ptr;
+			using namespace std::string_literals;
+			throw SystemError("System for component not found: "s + typeid(TComponent).name());
+		}
+
+		template <Component TComponent>
+		[[nodiscard]] SystemBase<TComponent>& getSystemForComponent()
+		{
+			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).getSystemForComponent<TComponent>());
+		}
+
 		template <Component... TComponent>
 		Entity& createEntity()
 		{
@@ -74,7 +104,7 @@ namespace secs
 
 			auto entityUID = m_NextUID++;
 			using ComponentStorage = ComponentStorage<TComponent...>;
-			auto componentStorage = std::make_unique<ComponentStorage>(getSystem<TComponent>().createComponent()...);
+			auto componentStorage = std::make_unique<ComponentStorage>(getSystemForComponent<TComponent>().createComponent()...);
 
 			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
 			return *m_NewEntities.back();
@@ -137,27 +167,38 @@ namespace secs
 		struct SystemStorage
 		{
 			std::type_index type;
+			std::type_index componentType;
 			std::unique_ptr<ISystem> system;
 
 			template <class TSystem>
-			constexpr SystemStorage(std::type_index _type, TSystem&& system) :
-				type{ _type },
-				system{ std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system)) }
+			constexpr SystemStorage(std::type_index type_, std::type_index componentType_, TSystem&& system_) :
+				type{ type_ },
+				componentType{ componentType_ },
+				system{ std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system_)) }
 			{
 			}
 		};
 
 		std::vector<SystemStorage> m_Systems;
 
-		template <class TSystem, class TWorld>
+		template <System TSystem, class TWorld>
 		constexpr static decltype(auto) findSystemStorage(TWorld&& world) noexcept
 		{
-			std::type_index typeIndex = typeid(std::decay_t<TSystem>);
-			return std::find_if(
-								std::begin(world.m_Systems),
-								std::end(world.m_Systems),
-								[typeIndex](const auto& info) { return info.type == typeIndex; }
-								);
+			return std::ranges::find(
+									world.m_Systems,
+									typeid(std::decay_t<TSystem>),
+									[](const auto& storage) { return storage.type; }
+									);
+		}
+
+		template <Component TComponent, class TWorld>
+		constexpr static decltype(auto) findSystemStorageForComponent(TWorld&& world) noexcept
+		{
+			return std::ranges::find(
+									world.m_Systems,
+									typeid(std::decay_t<TComponent>),
+									[](const auto& storage) { return storage.componentType; }
+									);
 		}
 
 		template <class TContainer>
