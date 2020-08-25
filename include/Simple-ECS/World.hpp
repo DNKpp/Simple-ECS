@@ -41,20 +41,20 @@ namespace secs
 		}
 
 		template <System TSystem>
-		const TSystem* getSystemPtr() const noexcept
+		[[nodiscard]] const TSystem* getSystemPtr() const noexcept
 		{
 			auto itr = findSystemStorage<TSystem>(*this);
 			return itr != std::end(m_Systems) ? static_cast<TSystem*>(itr->system.get()) : nullptr;
 		}
 
 		template <System TSystem>
-		TSystem*  getSystemPtr() noexcept
+		[[nodiscard]] TSystem*  getSystemPtr() noexcept
 		{
 			return const_cast<TSystem*>(std::as_const(*this).getSystem<TSystem>());
 		}
 
 		template <System TSystem>
-		const TSystem& getSystem() const
+		[[nodiscard]] const TSystem& getSystem() const
 		{
 			if (auto ptr = getSystemPtr<TSystem>())
 				return *ptr;
@@ -63,7 +63,7 @@ namespace secs
 		}
 
 		template <System TSystem>
-		TSystem& getSystem()
+		[[nodiscard]] TSystem& getSystem()
 		{
 			return const_cast<TSystem&>(std::as_const(*this).getSystem<TSystem>());
 		}
@@ -87,19 +87,19 @@ namespace secs
 			m_DestructibleEntityUIDs.emplace_back(uid);
 		}
 
-		const Entity* findEntityPtr(UID uid) const noexcept
+		[[nodiscard]] const Entity* findEntityPtr(UID uid) const noexcept
 		{
 			std::shared_lock entityLock{ m_EntityMx };
 			auto itr = findEntityItr(m_Entities, uid);
 			return itr != std::end(m_Entities) ? &**itr : nullptr;
 		}
 
-		Entity* findEntityPtr(UID uid) noexcept
+		[[nodiscard]] Entity* findEntityPtr(UID uid) noexcept
 		{
 			return const_cast<Entity*>(std::as_const(*this).findEntityPtr(uid));
 		}
 
-		const Entity& findEntity(UID uid) const
+		[[nodiscard]] const Entity& findEntity(UID uid) const
 		{
 			if (auto ptr = findEntityPtr(uid))
 				return *ptr;
@@ -107,7 +107,7 @@ namespace secs
 			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
 		}
 
-		Entity& findEntity(UID uid)
+		[[nodiscard]] Entity& findEntity(UID uid)
 		{
 			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
 		}
