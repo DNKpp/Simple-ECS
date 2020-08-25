@@ -141,13 +141,13 @@ namespace secs
 			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
 		}
 
-		void preUpdate()
+		void preUpdate() noexcept
 		{
 			for (auto& storage : m_Systems)
 				storage.system->preUpdate();
 		}
 
-		void update(float delta)
+		void update(float delta) noexcept
 		{
 			for (auto& storage : m_Systems)
 				storage.system->update(delta);
@@ -155,9 +155,8 @@ namespace secs
 
 		void postUpdate()
 		{
-			for (auto& storage : m_Systems)
-				storage.system->postUpdate();
-
+			postUpdateSystems();
+			
 			processInitializingEntities();
 			processNewEntities();
 			processEntityDestruction();
@@ -199,6 +198,12 @@ namespace secs
 									typeid(std::decay_t<TComponent>),
 									[](const auto& storage) { return storage.componentType; }
 									);
+		}
+
+		void postUpdateSystems() noexcept
+		{
+			for (auto& storage : m_Systems)
+				storage.system->postUpdate();
 		}
 
 		template <class TContainer>

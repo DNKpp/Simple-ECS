@@ -50,9 +50,9 @@ namespace secs
 		constexpr*/
 		virtual ~ISystem() noexcept = default;
 
-		virtual void preUpdate() = 0;
-		virtual void update(float delta) = 0;
-		virtual void postUpdate() = 0;
+		virtual void preUpdate() noexcept = 0;
+		virtual void update(float delta) noexcept = 0;
+		virtual void postUpdate() noexcept = 0;
 
 	protected:
 		constexpr ISystem() noexcept = default;
@@ -152,7 +152,7 @@ namespace secs
 			return std::empty(m_Components);
 		}
 
-		constexpr void onEntityStateChanged(UID componentUID, Entity& entity)
+		constexpr void onEntityStateChanged(UID componentUID, Entity& entity) noexcept
 		{
 			if (auto component = getComponentPtr(componentUID))
 			{
@@ -174,22 +174,22 @@ namespace secs
 			}
 		}
 
-		void preUpdate() override
+		void preUpdate() noexcept override
 		{
 		}
 
-		void update(float delta) override
+		void update(float delta) noexcept override
 		{
 		}
 
-		void postUpdate() override
+		void postUpdate() noexcept override
 		{
 		}
 
 	protected:
 		SystemBase() = default;
 
-		virtual void onEntityStateChangedImpl(TComponent& component, Entity& entity)
+		virtual void onEntityStateChangedImpl(TComponent& component, Entity& entity) noexcept
 		{
 		}
 
