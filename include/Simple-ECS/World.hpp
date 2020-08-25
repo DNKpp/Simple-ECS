@@ -83,8 +83,8 @@ namespace secs
 
 		void destroyEntityLater(UID uid)
 		{
-			std::scoped_lock lock{ m_DestructableEntityMx };
-			m_DestructableEntityUIDs.emplace_back(uid);
+			std::scoped_lock lock{ m_DestructibleEntityMx };
+			m_DestructibleEntityUIDs.emplace_back(uid);
 		}
 
 		const Entity* findEntityPtr(UID uid) const noexcept
@@ -169,10 +169,10 @@ namespace secs
 			return std::end(container);
 		}
 
-		auto takeDestructableEntityUIDs() noexcept
+		auto takeDestructibleEntityUIDs() noexcept
 		{
-			std::scoped_lock lock{ m_DestructableEntityMx };
-			auto tmp = std::move(m_DestructableEntityUIDs);
+			std::scoped_lock lock{ m_DestructibleEntityMx };
+			auto tmp = std::move(m_DestructibleEntityUIDs);
 			return tmp;
 		}
 
@@ -210,18 +210,18 @@ namespace secs
 		{
 			m_TeardownEntities.clear();
 
-			auto destructableEntityUIDs = takeDestructableEntityUIDs();
-			if (std::empty(destructableEntityUIDs))
+			auto destructibleEntityUIDs = takeDestructibleEntityUIDs();
+			if (std::empty(destructibleEntityUIDs))
 				return;
 
-			std::sort(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs));
-			destructableEntityUIDs.erase(std::unique(std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs)), std::end(destructableEntityUIDs));
+			std::sort(std::begin(destructibleEntityUIDs), std::end(destructibleEntityUIDs));
+			destructibleEntityUIDs.erase(std::unique(std::begin(destructibleEntityUIDs), std::end(destructibleEntityUIDs)), std::end(destructibleEntityUIDs));
 
 			std::scoped_lock entityLock{ m_EntityMx };
 			m_TeardownEntities = std::move(m_Entities);
 
 			std::set_difference(std::make_move_iterator(std::begin(m_TeardownEntities)), std::make_move_iterator(std::end(m_TeardownEntities)),
-				std::begin(destructableEntityUIDs), std::end(destructableEntityUIDs),
+				std::begin(destructibleEntityUIDs), std::end(destructibleEntityUIDs),
 				std::back_inserter(m_Entities), LessEntityByUID{});
 
 			m_TeardownEntities.erase(std::remove(std::begin(m_TeardownEntities), std::end(m_TeardownEntities), nullptr), std::end(m_TeardownEntities));
@@ -241,8 +241,8 @@ namespace secs
 		mutable std::shared_mutex m_EntityMx;
 		std::vector<std::unique_ptr<Entity>> m_Entities;
 
-		mutable std::mutex m_DestructableEntityMx;
-		std::vector<UID> m_DestructableEntityUIDs;
+		mutable std::mutex m_DestructibleEntityMx;
+		std::vector<UID> m_DestructibleEntityUIDs;
 
 		std::vector<std::unique_ptr<Entity>> m_TeardownEntities;
 	};
