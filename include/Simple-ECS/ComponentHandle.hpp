@@ -11,6 +11,7 @@
 #include "Defines.hpp"
 
 #include <cassert>
+#include <concepts>
 
 namespace secs
 {
@@ -22,6 +23,9 @@ namespace secs
 	public:
 		using SystemType = TSystem;
 		using ComponentType = typename SystemType::ComponentType;
+
+		ComponentHandle(const ComponentHandle&) = delete;
+		ComponentHandle& operator =(const ComponentHandle&) = delete;
 
 		constexpr ComponentHandle(Uid uid, SystemType& system) noexcept :
 			m_UID{ uid },
@@ -39,17 +43,14 @@ namespace secs
 			}
 		}
 
-		ComponentHandle(const ComponentHandle&) = delete;
-		ComponentHandle& operator =(const ComponentHandle&) = delete;
-
-		template <class USystem>
-		constexpr ComponentHandle(ComponentHandle<USystem>&& other)
+		template <std::derived_from<TSystem> T2System>
+		constexpr ComponentHandle(ComponentHandle<T2System>&& other) noexcept
 		{
 			*this = std::move(other);
 		}
 
-		template <class USystem, typename = std::enable_if_t<std::is_base_of_v<TSystem, USystem>>>
-		constexpr ComponentHandle& operator =(ComponentHandle<USystem>&& other) noexcept
+		template <std::derived_from<TSystem> T2System>
+		constexpr ComponentHandle& operator =(ComponentHandle<T2System>&& other) noexcept
 		{
 			ComponentHandle tmp{ std::move(*this) };
 			m_UID = std::exchange(other.m_UID, 0);
