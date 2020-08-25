@@ -22,7 +22,7 @@ namespace secs
 {
 	class Entity;
 
-	class SystemError :
+	class SystemError final :
 		public std::runtime_error
 	{
 	public:
@@ -77,7 +77,8 @@ namespace secs
 
 	public:
 		using ComponentType = TComponent;
-		using ComponentHandle = ComponentHandle<SystemBase<TComponent>>;
+		// ReSharper disable once CppRedundantQualifier (necessary for gcc)
+		using ComponentHandle = secs::ComponentHandle<SystemBase<TComponent>>;
 
 		SystemBase(const SystemBase&) = delete;
 		SystemBase& operator =(const SystemBase&) = delete;
