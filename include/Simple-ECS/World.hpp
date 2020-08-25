@@ -29,15 +29,15 @@ namespace secs
 	{
 	public:
 		template <System TSystem>
-		constexpr void registerSystem(TSystem&& system)
+		constexpr TSystem& registerSystem(TSystem&& system)
 		{
 			if (auto itr = findSystemStorage<TSystem>(*this);
 				itr != std::end(m_Systems))
 			{
 				itr->system = std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system));
+				return **itr;
 			}
-			else
-				m_Systems.emplace_back(typeid(TSystem), std::move(system));
+			return *m_Systems.emplace_back(typeid(TSystem), std::forward<TSystem>(system));
 		}
 
 		template <System TSystem>
