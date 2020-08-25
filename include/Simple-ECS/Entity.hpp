@@ -20,7 +20,7 @@
 
 namespace secs
 {
-	class EntityError :
+	class EntityError final :
 		public std::runtime_error
 	{
 	public:
