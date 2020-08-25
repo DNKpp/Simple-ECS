@@ -16,7 +16,6 @@
 #include "ComponentStorage.hpp"
 #include "Concepts.hpp"
 #include "Defines.hpp"
-#include "Typedefs.hpp"
 
 namespace secs
 {
