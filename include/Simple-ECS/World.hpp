@@ -31,42 +31,41 @@ namespace secs
 		template <System TSystem>
 		constexpr void registerSystem(TSystem&& system)
 		{
-			using TComponentType = typename TSystem::ComponentType;
-			if (auto itr = findSystemStorage<TComponentType>(*this);
+			if (auto itr = findSystemStorage<TSystem>(*this);
 				itr != std::end(m_Systems))
 			{
-				itr->system = std::make_unique<std::remove_cvref_t<TSystem>>(std::move(system));
+				itr->system = std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system));
 			}
 			else
-				m_Systems.emplace_back(typeid(TComponentType), std::move(system));
+				m_Systems.emplace_back(typeid(TSystem), std::move(system));
 		}
 
-		template <Component TComponent>
-		const SystemBase<TComponent>* getSystemPtr() const noexcept
+		template <System TSystem>
+		const TSystem* getSystemPtr() const noexcept
 		{
-			auto itr = findSystemStorage<TComponent>(*this);
-			return itr != std::end(m_Systems) ? static_cast<SystemBase<TComponent>*>(itr->system.get()) : nullptr;
+			auto itr = findSystemStorage<TSystem>(*this);
+			return itr != std::end(m_Systems) ? static_cast<TSystem*>(itr->system.get()) : nullptr;
 		}
 
-		template <Component TComponent>
-		SystemBase<TComponent>* getSystemPtr() noexcept
+		template <System TSystem>
+		TSystem*  getSystemPtr() noexcept
 		{
-			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).getSystem<TComponent>());
+			return const_cast<TSystem*>(std::as_const(*this).getSystem<TSystem>());
 		}
 
-		template <Component TComponent>
-		const SystemBase<TComponent>& getSystem() const
+		template <System TSystem>
+		const TSystem& getSystem() const
 		{
-			if (auto ptr = getSystemPtr<TComponent>())
+			if (auto ptr = getSystemPtr<TSystem>())
 				return *ptr;
 			using namespace std::string_literals;
-			throw SystemError("System not found: "s + typeid(SystemBase<TComponent>).name());
+			throw SystemError("System not found: "s + typeid(TSystem).name());
 		}
 
-		template <Component TComponent>
-		SystemBase<TComponent>& getSystem()
+		template <System TSystem>
+		TSystem& getSystem()
 		{
-			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).getSystem<TComponent>());
+			return const_cast<TSystem&>(std::as_const(*this).getSystem<TSystem>());
 		}
 
 		template <Component... TComponent>
@@ -143,17 +142,17 @@ namespace secs
 
 			template <class TSystem>
 			constexpr SystemStorage(std::type_index _type, TSystem&& system) :
-				type{ std::move(_type) },
+				type{ _type },
 				system{ std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system)) }
 			{
 			}
 		};
 		std::vector<SystemStorage> m_Systems;
 
-		template <class TComponent, class TWorld>
+		template <class TSystem, class TWorld>
 		constexpr static decltype(auto) findSystemStorage(TWorld&& world) noexcept
 		{
-			std::type_index typeIndex = typeid(std::decay_t<TComponent>);
+			std::type_index typeIndex = typeid(std::decay_t<TSystem>);
 			return std::find_if(std::begin(world.m_Systems), std::end(world.m_Systems),
 				[typeIndex](const auto& info) { return info.type == typeIndex; }
 			);
