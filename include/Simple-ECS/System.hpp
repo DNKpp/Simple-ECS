@@ -189,7 +189,7 @@ namespace secs
 	protected:
 		SystemBase() = default;
 
-		virtual void onEntityStateChangedImpl(TComponent& component, Entity& entity) noexcept
+		virtual void onEntityStateChangedImpl(TComponent& component, Entity& entity)
 		{
 		}
 
