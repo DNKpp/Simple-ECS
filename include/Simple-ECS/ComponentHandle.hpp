@@ -1,4 +1,3 @@
-
 //          Copyright Dominic Koepke 2020 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -17,7 +16,7 @@
 namespace secs
 {
 	class Entity;
-	
+
 	template <class TSystem>
 	class ComponentHandle
 	{
@@ -25,14 +24,15 @@ namespace secs
 		using SystemType = TSystem;
 		using ComponentType = typename SystemType::ComponentType;
 
-		constexpr ComponentHandle(UID uid, SystemType& system) noexcept :
+		constexpr ComponentHandle(Uid uid, SystemType& system) noexcept :
 			m_UID{ uid },
 			m_System{ &system }
 		{
 		}
 
 		// ToDo: c++20
-		/*constexpr*/ ~ComponentHandle() noexcept
+		/*constexpr*/
+		~ComponentHandle() noexcept
 		{
 			if (!isEmpty())
 			{
@@ -66,12 +66,12 @@ namespace secs
 			return *this;
 		}
 
-		void setupEntity(Entity& entity) noexcept
+		void setupEntity(Entity& entity) const noexcept
 		{
 			getSystem().setComponentEntity(getUID(), entity);
 		}
 
-		[[nodiscard]] constexpr UID getUID() const noexcept
+		[[nodiscard]] constexpr Uid getUID() const noexcept
 		{
 			return m_UID;
 		}
@@ -108,7 +108,7 @@ namespace secs
 		}
 
 	private:
-		UID m_UID = 0;
+		Uid m_UID = 0;
 		SystemType* m_System = nullptr;
 
 		constexpr ComponentHandle() noexcept = default;

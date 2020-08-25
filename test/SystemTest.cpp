@@ -107,7 +107,7 @@ TEST_CASE("ComponentStorage tests", "[System]")
 	};
 
 	TestSystem testSystem;
-	UID uid = 0;
+	Uid uid = 0;
 
 	{
 		std::unique_ptr<BaseComponentStorage> storage = std::make_unique<ComponentStorage<TestComponent>>(testSystem.createComponent());
@@ -126,7 +126,7 @@ TEST_CASE("ComponentStorage tests", "[System]")
 
 TEST_CASE("System update tests", "[System]")
 {
-	using secs::UID;
+	using secs::Uid;
 
 	struct TestComponent
 	{

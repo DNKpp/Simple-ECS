@@ -13,7 +13,7 @@
 
 namespace secs
 {
-	using UID = std::size_t;
+	using Uid = std::size_t;
 	
 	enum class EntityState
 	{

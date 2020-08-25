@@ -36,7 +36,7 @@ namespace secs
 	class Entity
 	{
 	public:
-		Entity(UID uid, std::unique_ptr<BaseComponentStorage> componentStorage) :
+		Entity(Uid uid, std::unique_ptr<BaseComponentStorage> componentStorage) :
 			m_UID{ uid },
 			m_ComponentStorage{ std::move(componentStorage) }
 		{
@@ -45,7 +45,7 @@ namespace secs
 			m_ComponentStorage->setupEntity(*this);
 		}
 
-		[[nodiscard]] constexpr UID getUID() const noexcept
+		[[nodiscard]] constexpr Uid getUID() const noexcept
 		{
 			return m_UID;
 		}
@@ -102,7 +102,7 @@ namespace secs
 		}
 
 	private:
-		UID m_UID = 0;
+		Uid m_UID = 0;
 		EntityState m_State = EntityState::none;
 		std::unique_ptr<BaseComponentStorage> m_ComponentStorage;
 	};
@@ -116,18 +116,18 @@ namespace secs
 		}
 
 	private:
-		[[nodiscard]] constexpr static UID getUID(const Entity& entity) noexcept
+		[[nodiscard]] constexpr static Uid getUID(const Entity& entity) noexcept
 		{
 			return entity.getUID();
 		}
 
-		[[nodiscard]] static UID getUID(const std::unique_ptr<Entity>& entityPtr) noexcept
+		[[nodiscard]] static Uid getUID(const std::unique_ptr<Entity>& entityPtr) noexcept
 		{
 			assert(entityPtr);
 			return entityPtr->getUID();
 		}
 
-		[[nodiscard]] constexpr static UID getUID(UID uid) noexcept
+		[[nodiscard]] constexpr static Uid getUID(Uid uid) noexcept
 		{
 			return uid;
 		}
