@@ -9,8 +9,12 @@
 
 #pragma once
 
+#include <cstddef>
+
 namespace secs
 {
+	using UID = std::size_t;
+	
 	enum class EntityState
 	{
 		none,
