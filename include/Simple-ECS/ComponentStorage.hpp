@@ -113,20 +113,29 @@ namespace secs
 			return ((std::type_index(typeid(TComponent)) == typeIndex) || ...);
 		}
 
+		template <std::size_t TIndex>
+		[[nodiscard]] const void* getComponentImpl(std::type_index typeIndex) const
+		{
+			if constexpr (TIndex < sizeof...(TComponent))
+			{
+				auto& handle = std::get<TIndex>(m_ComponentHandles);
+				using Component_t = typename std::remove_cvref_t<decltype(handle)>::ComponentType;
+				if (typeIndex == std::type_index(typeid(Component_t)))
+				{
+					return static_cast<const void*>(&handle.getComponent());
+				}
+				return getComponentImpl<TIndex + 1>(typeIndex);
+			}
+			else
+			{
+				return nullptr;
+			}
+		}
+		
 		// ToDo: c++20
 		[[nodiscard]] /*constexpr */const void* getComponentImpl(std::type_index typeIndex) const noexcept override
 		{
-			const void* component = nullptr;
-			auto find = [&component, typeIndex](const auto& param)
-			{
-				using ComponentType = typename std::decay_t<decltype(param)>::ComponentType;
-				if (!component && std::type_index(typeid(ComponentType)) == typeIndex)
-				{
-					component = &param.getComponent();
-				}
-			};
-			(find(std::get<HandleType<TComponent>>(m_ComponentHandles)), ...);
-			return component;
+			return getComponentImpl<0>(typeIndex);
 		}
 
 		// ToDo: c++20
@@ -145,26 +154,6 @@ namespace secs
 			};
 			(exec(std::get<HandleType<TComponent>>(m_ComponentHandles)), ...);
 		}
-
-		//template <class TComponents>
-		//consteval static auto findComponent(TComponents&& components, std::type_index typeIndex) noexcept
-		//{
-		//	//const void* component = nullptr;
-		//	//auto find = [&component, typeIndex](const auto& param)
-		//	//{
-		//	//	if (!component && std::type_index(typeid(param)) == typeIndex)
-		//	//	{
-		//	//		component = &param;
-		//	//	}
-		//	//};
-		//	//(find(*std::get<TComponentHandle>(m_ComponentHandles).system), ...);
-		//	//return component;
-		//	for (std::size_t i = 0; i < sizeof...(components); ++i)
-		//	{
-		//		if (std::type_index(typeid(typename decltype(std::get<i>(components))::ComponentType) == typeIndex)
-		//			return &std::get<i>(components).getComponent();
-		//	}
-		//}
 	};
 
 	template <class... TComponentHandles>
