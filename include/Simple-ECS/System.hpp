@@ -58,9 +58,6 @@ namespace secs
 		constexpr ISystem() noexcept = default;
 	};
 
-	class Entity;
-	class World;
-
 	template <class TComponent>
 	class SystemBase :
 		public ISystem
