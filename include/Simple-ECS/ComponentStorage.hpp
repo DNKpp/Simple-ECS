@@ -101,6 +101,7 @@ namespace secs
 		{
 			auto exec = [&entity](auto& handle)
 			{
+				assert(!handle.isEmpty());
 				handle.setupEntity(entity);
 			};
 			(exec(std::get<HandleType<TComponent>>(m_ComponentHandles)), ...);
@@ -137,14 +138,12 @@ namespace secs
 		// ToDo: c++20
 		/*constexpr */void onEntityStateChangedImpl(Entity& entity) noexcept override
 		{
-			(emitEntityStateChange(std::get<HandleType<TComponent>>(m_ComponentHandles), entity), ...);
-		}
-
-		template <class THandle>
-		constexpr static void emitEntityStateChange(THandle& handle, Entity& entity) noexcept
-		{
-			assert(!handle.isEmpty());
-			handle.getSystem().onEntityStateChanged(handle.getUID(), entity);
+			auto exec = [&entity](auto& handle)
+			{
+				assert(!handle.isEmpty());
+				handle.getSystem().onEntityStateChanged(handle.getUID(), entity);
+			};
+			(exec(std::get<HandleType<TComponent>>(m_ComponentHandles)), ...);
 		}
 
 		//template <class TComponents>
