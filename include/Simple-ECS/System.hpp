@@ -14,7 +14,6 @@
 #include <queue>
 #include <stdexcept>
 
-#include "ComponentHandle.hpp"
 #include "Defines.hpp"
 #include "EmptyCallable.hpp"
 
@@ -50,22 +49,96 @@ namespace secs
 		constexpr*/
 		virtual ~ISystem() noexcept = default;
 
-		virtual void preUpdate() noexcept = 0;
-		virtual void update(float delta) noexcept = 0;
-		virtual void postUpdate() noexcept = 0;
+		virtual void preUpdate() = 0;
+		virtual void update(float delta) = 0;
+		virtual void postUpdate() = 0;
 
 	protected:
 		constexpr ISystem() noexcept = default;
 	};
 
 	template <class TComponent>
+	class SystemBase;
+}
+namespace secs::detail
+{
+	struct ComponentRtti
+	{
+		using DestroyFn_t = void(void*, Uid) noexcept;
+		using SetEntityFn_t = void(void*, Uid, Entity&) noexcept;
+		using EntityStateChangeFn_t = void(void*, Uid);
+		using GetComponentPtrFn_t = const void*(const void*, Uid) noexcept;
+
+		template <class TComponent>
+		static void destroyImpl(void* targetSystem, Uid componentUid) noexcept
+		{
+			assert(targetSystem);
+			auto& system = *static_cast<SystemBase<TComponent>*>(targetSystem);
+			system.destroyComponent(componentUid);
+		}
+
+		template <class TComponent>
+		static void setEntityImpl(void* targetSystem, Uid componentUid, Entity& entity) noexcept
+		{
+			assert(targetSystem);
+			auto& system = *static_cast<SystemBase<TComponent>*>(targetSystem);
+			system.setComponentEntity(componentUid, entity);
+		}
+
+		template <class TComponent>
+		static void entityStateChangedImpl(void* targetSystem, Uid componentUid)
+		{
+			assert(targetSystem);
+			auto& system = *static_cast<SystemBase<TComponent>*>(targetSystem);
+			system.entityStateChanged(componentUid);
+		}
+
+		template <class TComponent>
+		static const void* getComponentPtrImpl(const void* targetSystem, Uid componentUid) noexcept
+		{
+			assert(targetSystem);
+			auto& system = *static_cast<const SystemBase<TComponent>*>(targetSystem);
+			return static_cast<const void*>(system.getComponentPtr(componentUid));
+		}
+
+		DestroyFn_t* destroy;
+		SetEntityFn_t* setEntity;
+		EntityStateChangeFn_t* entityStateChanged;
+		GetComponentPtrFn_t* getComponentPtr;
+	};
+
+	template <class TComponent>
+	inline constexpr ComponentRtti componentRtti
+	{
+		&ComponentRtti::destroyImpl<TComponent>,
+		&ComponentRtti::setEntityImpl<TComponent>,
+		&ComponentRtti::entityStateChangedImpl<TComponent>,
+		&ComponentRtti::getComponentPtrImpl<TComponent>
+	};
+
+	struct ComponentStorageInfo
+	{
+		void* systemPtr = nullptr;
+		Uid componentUid = 0;
+		std::type_index componentTypeIndex{ typeid(void) };
+		const ComponentRtti* rtti = nullptr;
+	};
+
+	[[nodiscard]] inline bool isValid(const ComponentStorageInfo& info) noexcept
+	{
+		return info.systemPtr != nullptr && info.componentUid != 0 && info.componentTypeIndex != typeid(void) && info.rtti != nullptr;
+	}
+}
+
+namespace secs
+{
+	template <class TComponent>
 	class SystemBase :
 		public ISystem
 	{
 	private:
-		template <class TSystem>
-		friend class ComponentHandle;
-
+		friend struct detail::ComponentRtti;
+		
 		struct ComponentInfo
 		{
 			Entity* entity;
@@ -74,9 +147,7 @@ namespace secs
 
 	public:
 		using ComponentType = TComponent;
-		// ReSharper disable once CppRedundantQualifier (necessary for gcc)
-		using ComponentHandle = secs::ComponentHandle<SystemBase<TComponent>>;
-
+		
 		SystemBase(const SystemBase&) = delete;
 		SystemBase& operator =(const SystemBase&) = delete;
 
@@ -86,27 +157,21 @@ namespace secs
 		~SystemBase() noexcept override = default;
 
 		template <class TComponentCreator = utils::EmptyCallable<TComponent>>
-		[[nodiscard]] ComponentHandle createComponent(TComponentCreator&& creator = TComponentCreator{})
+		[[nodiscard]] Uid createComponent(TComponentCreator&& creator = TComponentCreator{})
 		{
 			if (auto itr = std::find(std::begin(m_Components), std::end(m_Components), std::nullopt);
 				itr != std::end(m_Components))
 			{
 				itr->emplace(ComponentInfo{ nullptr, creator() });
-				return { static_cast<Uid>(std::distance(std::begin(m_Components), itr) + 1u), *this };
+				return { static_cast<Uid>(std::distance(std::begin(m_Components), itr)) + 1u };
 			}
 			m_Components.emplace_back(ComponentInfo{ nullptr, creator() });
-			return { std::size(m_Components), *this };
+			return static_cast<Uid>(std::size(m_Components));
 		}
 
 		[[nodiscard]] constexpr bool hasComponent(Uid uid) const noexcept
 		{
 			return 0u < uid && uid <= std::size(m_Components) && m_Components[uid - 1u];
-		}
-
-		[[nodiscard]] constexpr const ComponentInfo& operator [](Uid uid) const noexcept
-		{
-			assert(hasComponent(uid));
-			return m_Components[uid - 1u];
 		}
 
 		[[nodiscard]] constexpr const TComponent* getComponentPtr(Uid uid) const noexcept
@@ -150,15 +215,6 @@ namespace secs
 			return std::empty(m_Components);
 		}
 
-		constexpr void onEntityStateChanged(Uid componentUID, Entity& entity) noexcept
-		{
-			if (auto component = getComponentPtr(componentUID))
-			{
-				assert(component);
-				onEntityStateChangedImpl(*component, entity);
-			}
-		}
-
 		template <class TComponentAction = utils::EmptyCallable<>>
 		void forEachComponent(TComponentAction&& action = TComponentAction())
 		{
@@ -172,38 +228,46 @@ namespace secs
 			}
 		}
 
-		void preUpdate() noexcept override
+		void preUpdate() override
 		{
 		}
 
-		void update(float delta) noexcept override
+		void update(float delta) override
 		{
 		}
 
-		void postUpdate() noexcept override
+		void postUpdate() override
 		{
 		}
 
 	protected:
 		SystemBase() = default;
 
-		virtual void onEntityStateChangedImpl(TComponent& component, Entity& entity) noexcept
+		virtual void derivedEntityStateChanged(TComponent& component, Entity& entity)
 		{
 		}
 
 	private:
 		std::deque<std::optional<ComponentInfo>> m_Components;
 
-		void setComponentEntity(Uid componentUID, Entity& entity) noexcept
+		void setComponentEntity(Uid uid, Entity& entity) noexcept
 		{
-			assert(hasComponent(componentUID));
-			m_Components[componentUID - 1u]->entity = &entity;
+			assert(hasComponent(uid));
+			m_Components[uid - 1u]->entity = &entity;
 		}
 
-		constexpr void deleteComponent(Uid uid) noexcept
+		constexpr void destroyComponent(Uid uid) noexcept
 		{
 			if (uid <= std::size(m_Components))
 				m_Components[uid - 1].reset();
+		}
+
+		constexpr void entityStateChanged(Uid uid)
+		{
+			assert(0u < uid && uid <= std::size(m_Components));
+			auto& info = m_Components[uid - 1u];
+			assert(info && info->entity);
+			derivedEntityStateChanged(info->component, *info->entity);
 		}
 	};
 }

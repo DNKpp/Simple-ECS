@@ -18,7 +18,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "ComponentStorage.hpp"
 #include "Concepts.hpp"
 #include "Entity.hpp"
 #include "System.hpp"
@@ -42,59 +41,59 @@ namespace secs
 		}
 
 		template <System TSystem>
-		[[nodiscard]] const TSystem* getSystemPtr() const noexcept
+		[[nodiscard]] const TSystem* findSystem() const noexcept
 		{
 			auto itr = findSystemStorage<TSystem>(*this);
 			return itr != std::end(m_Systems) ? static_cast<TSystem*>(itr->system.get()) : nullptr;
 		}
 
 		template <System TSystem>
-		[[nodiscard]] TSystem* getSystemPtr() noexcept
+		[[nodiscard]] TSystem* findSystem() noexcept
 		{
-			return const_cast<TSystem*>(std::as_const(*this).getSystem<TSystem>());
+			return const_cast<TSystem*>(std::as_const(*this).findSystem<TSystem>());
 		}
 
 		template <System TSystem>
-		[[nodiscard]] const TSystem& getSystem() const
+		[[nodiscard]] const TSystem& system() const
 		{
-			if (auto ptr = getSystemPtr<TSystem>())
+			if (auto* ptr = findSystem<TSystem>())
 				return *ptr;
 			using namespace std::string_literals;
 			throw SystemError("System not found: "s + typeid(TSystem).name());
 		}
 
 		template <System TSystem>
-		[[nodiscard]] TSystem& getSystem()
+		[[nodiscard]] TSystem& system()
 		{
-			return const_cast<TSystem&>(std::as_const(*this).getSystem<TSystem>());
+			return const_cast<TSystem&>(std::as_const(*this).system<TSystem>());
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] const SystemBase<TComponent>* getSystemPtrForComponent() const noexcept
+		[[nodiscard]] const SystemBase<TComponent>* findSystemByComponentType() const noexcept
 		{
 			auto itr = findSystemStorageForComponent<TComponent>(*this);
 			return itr != std::end(m_Systems) ? static_cast<SystemBase<TComponent>*>(itr->system.get()) : nullptr;
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] SystemBase<TComponent>* getSystemPtrForComponent() noexcept
+		[[nodiscard]] SystemBase<TComponent>* findSystemByComponentType() noexcept
 		{
-			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).getSystemPtrForComponent<TComponent>());
+			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).findSystemByComponentType<TComponent>());
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] const SystemBase<TComponent>& getSystemForComponent() const
+		[[nodiscard]] const SystemBase<TComponent>& systemByComponentType() const
 		{
-			if (auto ptr = getSystemPtrForComponent<TComponent>())
+			if (auto* ptr = findSystemByComponentType<TComponent>())
 				return *ptr;
 			using namespace std::string_literals;
 			throw SystemError("System for component not found: "s + typeid(TComponent).name());
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] SystemBase<TComponent>& getSystemForComponent()
+		[[nodiscard]] SystemBase<TComponent>& systemByComponentType()
 		{
-			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).getSystemForComponent<TComponent>());
+			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).systemByComponentType<TComponent>());
 		}
 
 		template <Component... TComponent>
@@ -103,10 +102,12 @@ namespace secs
 			std::scoped_lock entityLock{ m_NewEntityMx };
 
 			auto entityUID = m_NextUID++;
-			using ComponentStorage = ComponentStorage<TComponent...>;
-			auto componentStorage = std::make_unique<ComponentStorage>(getSystemForComponent<TComponent>().createComponent()...);
-
-			m_NewEntities.emplace_back(std::make_unique<Entity>(entityUID, std::move(componentStorage)));
+			m_NewEntities.emplace_back(
+										std::make_unique<Entity>(
+																entityUID,
+																std::vector<detail::ComponentStorageInfo>{ makeComponentStorageInfo(systemByComponentType<TComponent>())... }
+																)
+									);
 			return *m_NewEntities.back();
 		}
 
@@ -116,29 +117,29 @@ namespace secs
 			m_DestructibleEntityUIDs.emplace_back(uid);
 		}
 
-		[[nodiscard]] const Entity* findEntityPtr(Uid uid) const noexcept
+		[[nodiscard]] const Entity* findEntity(Uid uid) const noexcept
 		{
 			std::shared_lock entityLock{ m_EntityMx };
 			const auto itr = findEntityItr(m_Entities, uid);
 			return itr != std::end(m_Entities) ? &**itr : nullptr;
 		}
 
-		[[nodiscard]] Entity* findEntityPtr(Uid uid) noexcept
+		[[nodiscard]] Entity* findEntity(Uid uid) noexcept
 		{
-			return const_cast<Entity*>(std::as_const(*this).findEntityPtr(uid));
+			return const_cast<Entity*>(std::as_const(*this).findEntity(uid));
 		}
 
-		[[nodiscard]] const Entity& findEntity(Uid uid) const
+		[[nodiscard]] const Entity& entity(Uid uid) const
 		{
-			if (const auto ptr = findEntityPtr(uid))
+			if (const auto* ptr = findEntity(uid))
 				return *ptr;
 			using namespace std::string_literals;
 			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
 		}
 
-		[[nodiscard]] Entity& findEntity(Uid uid)
+		[[nodiscard]] Entity& entity(Uid uid)
 		{
-			return const_cast<Entity&>(std::as_const(*this).findEntity(uid));
+			return const_cast<Entity&>(std::as_const(*this).entity(uid));
 		}
 
 		void preUpdate() noexcept
@@ -156,7 +157,7 @@ namespace secs
 		void postUpdate()
 		{
 			postUpdateSystems();
-			
+
 			processInitializingEntities();
 			processNewEntities();
 			processEntityDestruction();
@@ -179,6 +180,14 @@ namespace secs
 		};
 
 		std::vector<SystemStorage> m_Systems;
+
+		template <class TSystem>
+		detail::ComponentStorageInfo makeComponentStorageInfo(TSystem& system)
+		{
+			auto uid = system.createComponent();
+			using ComponentType = typename TSystem::ComponentType;
+			return { &system, uid, typeid(ComponentType), &detail::componentRtti<ComponentType> };
+		}
 
 		template <System TSystem, class TWorld>
 		constexpr static decltype(auto) findSystemStorage(TWorld&& world) noexcept
@@ -209,8 +218,8 @@ namespace secs
 		template <class TContainer>
 		constexpr static auto findEntityItr(TContainer& container, Uid uid) noexcept -> decltype(std::begin(container))
 		{
-			if (auto itr = std::lower_bound(std::begin(container), std::end(container), uid, LessEntityByUID{});
-				itr != std::end(container) && (*itr)->getUID() == uid)
+			if (auto itr = std::lower_bound(std::begin(container), std::end(container), uid, EntityLessByUid{});
+				itr != std::end(container) && (*itr)->uid() == uid)
 			{
 				return itr;
 			}
@@ -273,7 +282,7 @@ namespace secs
 								std::begin(destructibleEntityUIDs),
 								std::end(destructibleEntityUIDs),
 								std::back_inserter(m_Entities),
-								LessEntityByUID{}
+								EntityLessByUid{}
 								);
 
 			m_TeardownEntities.erase(std::remove(std::begin(m_TeardownEntities), std::end(m_TeardownEntities), nullptr), std::end(m_TeardownEntities));

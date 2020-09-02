@@ -1,4 +1,3 @@
-
 //          Copyright Dominic Koepke 2020 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -10,12 +9,19 @@
 #pragma once
 
 #include <cassert>
-#include <memory>
+#include <ranges>
 #include <stdexcept>
+#include <typeindex>
+#include <vector>
 
-#include "ComponentStorage.hpp"
 #include "Concepts.hpp"
 #include "Defines.hpp"
+#include "System.hpp"
+
+namespace secs
+{
+	class Entity;
+}
 
 namespace secs
 {
@@ -23,110 +29,153 @@ namespace secs
 		public std::runtime_error
 	{
 	public:
-		EntityError(const std::string& msg) :
+		explicit EntityError(const std::string& msg) :
 			std::runtime_error(msg)
-		{}
+		{
+		}
 
-		EntityError(const char* msg) :
+		explicit EntityError(const char* msg) :
 			std::runtime_error(msg)
-		{}
+		{
+		}
 	};
 
 	class Entity
 	{
 	public:
-		Entity(Uid uid, std::unique_ptr<BaseComponentStorage> componentStorage) :
-			m_UID{ uid },
-			m_ComponentStorage{ std::move(componentStorage) }
+		Entity(const Entity&) = delete;
+		Entity& operator =(const Entity&) = delete;
+		Entity(Entity&&) = delete;
+		Entity& operator =(Entity&&) = delete;
+
+		explicit Entity(Uid uid, std::vector<detail::ComponentStorageInfo> componentInfos) :
+			m_Uid{ uid },
+			m_ComponentInfos{ std::move(componentInfos) }
 		{
-			assert(uid);
-			assert(m_ComponentStorage);
-			m_ComponentStorage->setupEntity(*this);
+			assert(uid != 0);
+			setComponentEntity();
 		}
 
-		[[nodiscard]] constexpr Uid getUID() const noexcept
+		~Entity() noexcept
 		{
-			return m_UID;
+			for (auto& info : m_ComponentInfos)
+			{
+				assert(info.rtti && info.systemPtr && info.componentUid != 0);
+				info.rtti->destroy(info.systemPtr, info.componentUid);
+			}
 		}
 
-		[[nodiscard]] constexpr EntityState getState() const noexcept
+		[[nodiscard]] constexpr Uid uid() const noexcept
+		{
+			return m_Uid;
+		}
+
+		[[nodiscard]] constexpr EntityState state() const noexcept
 		{
 			return m_State;
 		}
 
-		void changeState(EntityState state) noexcept
+		using enum EntityState;
+		void changeState(EntityState state)
 		{
 			assert(static_cast<int>(m_State) < static_cast<int>(state));
 			m_State = state;
 
-			assert(m_ComponentStorage);
-			m_ComponentStorage->onEntityStateChanged(*this);
-
+			for (auto& info : m_ComponentInfos)
+			{
+				assert(isValid(info));
+				info.rtti->entityStateChanged(info.systemPtr, info.componentUid);
+			}
 		}
 
 		template <Component TComponent>
 		[[nodiscard]] bool hasComponent() const noexcept
 		{
-			assert(m_ComponentStorage);
-			return m_ComponentStorage->hasComponent<TComponent>();
+			return findComponentInfo<TComponent>(m_ComponentInfos) != end(m_ComponentInfos);
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] const TComponent* getComponentPtr() const noexcept
+		[[nodiscard]] const TComponent* findComponent() const noexcept
 		{
-			assert(m_ComponentStorage);
-			return m_ComponentStorage->getComponent<TComponent>();
+			if (auto itr = findComponentInfo<TComponent>(m_ComponentInfos); itr != std::end(m_ComponentInfos))
+			{
+				assert(isValid(*itr));
+				return static_cast<const TComponent*>(itr->rtti->getComponentPtr(itr->systemPtr, itr->componentUid));
+			}
+			return nullptr;
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] TComponent* getComponentPtr() noexcept
+		[[nodiscard]] TComponent* findComponent() noexcept
 		{
-			assert(m_ComponentStorage);
-			return m_ComponentStorage->getComponent< TComponent>();
+			return const_cast<TComponent*>(std::as_const(*this).findComponent<TComponent>());
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] const TComponent& getComponent() const noexcept
+		[[nodiscard]] const TComponent& component() const
 		{
-			assert(m_ComponentStorage);
-			auto component = m_ComponentStorage->getComponent<TComponent>();
-			assert(component);
-			return *component;
+			if (auto* componentPtr = findComponent<TComponent>())
+			{
+				return *componentPtr;
+			}
+			using namespace std::string_literals;
+			throw EntityError("Component not found: "s + typeid(TComponent).name());
 		}
 
 		template <Component TComponent>
-		[[nodiscard]] TComponent& getComponent() noexcept
+		[[nodiscard]] TComponent& component()
 		{
-			return const_cast<TComponent&>(std::as_const(*this).getComponent<TComponent>());
+			if (auto* componentPtr = findComponent<TComponent>())
+			{
+				return *componentPtr;
+			}
+			using namespace std::string_literals;
+			throw EntityError("Component not found: "s + typeid(TComponent).name());
 		}
 
 	private:
-		Uid m_UID = 0;
-		EntityState m_State = EntityState::none;
-		std::unique_ptr<BaseComponentStorage> m_ComponentStorage;
+		Uid m_Uid = 0;
+		EntityState m_State = none;
+		std::vector<detail::ComponentStorageInfo> m_ComponentInfos;
+
+		template <class TComponent, class TContainer>
+		static auto findComponentInfo(TContainer& container)
+		{
+			std::type_index expectedTypeIndex = typeid(std::remove_cvref_t<TComponent>);
+			return std::ranges::find(container, expectedTypeIndex, [](const detail::ComponentStorageInfo& info) { return info.componentTypeIndex; });
+		}
+
+		void setComponentEntity() noexcept
+		{
+			for (auto& info : m_ComponentInfos)
+			{
+				assert(isValid(info));
+				info.rtti->setEntity(info.systemPtr, info.componentUid, *this);
+			}
+		}
 	};
 
-	struct LessEntityByUID
+	struct EntityLessByUid
 	{
 		template <class TLhs, class TRhs>
 		[[nodiscard]] bool operator ()(const TLhs& lhs, const TRhs& rhs) const noexcept
 		{
-			return getUID(lhs) < getUID(rhs);
+			return uid(lhs) < uid(rhs);
 		}
 
 	private:
-		[[nodiscard]] constexpr static Uid getUID(const Entity& entity) noexcept
+		[[nodiscard]] constexpr static Uid uid(const Entity& entity) noexcept
 		{
-			return entity.getUID();
+			return entity.uid();
 		}
 
-		[[nodiscard]] static Uid getUID(const std::unique_ptr<Entity>& entityPtr) noexcept
+		[[nodiscard]] static Uid uid(const std::unique_ptr<Entity>& entityPtr) noexcept
 		{
 			assert(entityPtr);
-			return entityPtr->getUID();
+			return entityPtr->uid();
 		}
 
-		[[nodiscard]] constexpr static Uid getUID(Uid uid) noexcept
+		[[nodiscard]] constexpr static Uid uid(Uid uid) noexcept
 		{
 			return uid;
 		}
