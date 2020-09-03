@@ -163,9 +163,11 @@ namespace secs
 				itr != std::end(m_Components))
 			{
 				itr->emplace(ComponentInfo{ nullptr, creator() });
+				++m_ComponentCount;
 				return { static_cast<Uid>(std::distance(std::begin(m_Components), itr)) + 1u };
 			}
 			m_Components.emplace_back(ComponentInfo{ nullptr, creator() });
+			++m_ComponentCount;
 			return static_cast<Uid>(std::size(m_Components));
 		}
 
@@ -206,12 +208,12 @@ namespace secs
 
 		[[nodiscard]] constexpr std::size_t size() const noexcept
 		{
-			return std::size(m_Components) - std::ranges::count_if(m_Components, [](const auto& component) { return !component; });
+			return m_ComponentCount;
 		}
 
 		[[nodiscard]] constexpr bool empty() const noexcept
 		{
-			return std::empty(m_Components) || std::ranges::all_of(m_Components, [](const auto& component) { return !component; });
+			return m_ComponentCount == 0;
 		}
 
 		template <class TComponentAction = utils::EmptyCallable<>>
@@ -247,6 +249,7 @@ namespace secs
 		}
 
 	private:
+		std::size_t m_ComponentCount = 0;
 		std::deque<std::optional<ComponentInfo>> m_Components;
 
 		void setComponentEntity(Uid uid, Entity& entity) noexcept
@@ -258,7 +261,10 @@ namespace secs
 		constexpr void destroyComponent(Uid uid) noexcept
 		{
 			if (uid <= std::size(m_Components))
+			{
 				m_Components[uid - 1].reset();
+				--m_ComponentCount;
+			}
 		}
 
 		constexpr void entityStateChanged(Uid uid)
