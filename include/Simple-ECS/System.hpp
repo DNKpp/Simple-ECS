@@ -38,7 +38,6 @@ namespace secs
 		}
 	};
 
-	
 	/**
 	 * \brief Interface for System classes
 	 */
@@ -175,13 +174,12 @@ namespace secs
 		 * \brief Move constructor
 		 */
 		SystemBase(SystemBase&&) /* NOT noexcept*/ = default;
-		
+
 		/**
 		 * \brief Move assignment
 		 */
 		SystemBase& operator =(SystemBase&&) /* NOT noexcept*/ = default;
 
-		
 		/**
 		 * \brief Destructor
 		 */
@@ -249,7 +247,6 @@ namespace secs
 			return const_cast<TComponent&>(std::as_const(*this).component(uid));
 		}
 
-		
 		/**
 		 * \brief Counts active Components
 		 * \return Amount of active Component objects.

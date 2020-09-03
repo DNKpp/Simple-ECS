@@ -29,7 +29,7 @@ namespace secs
 		running,
 		teardown
 	};
-	
+
 	/** \var EntityState EntityState::none
 	 * \brief Initial state
 	 *
