@@ -113,7 +113,7 @@ namespace secs
 		void destroyEntityLater(Uid uid)
 		{
 			std::scoped_lock lock{ m_DestructibleEntityMx };
-			m_DestructibleEntityUIDs.emplace_back(uid);
+			m_DestructibleEntities.emplace_back(uid);
 		}
 
 		[[nodiscard]] const Entity* findEntity(Uid uid) const noexcept
@@ -246,7 +246,7 @@ namespace secs
 		auto takeDestructibleEntityUIDs() noexcept
 		{
 			std::scoped_lock lock{ m_DestructibleEntityMx };
-			auto tmp = std::move(m_DestructibleEntityUIDs);
+			auto tmp = std::move(m_DestructibleEntities);
 			return tmp;
 		}
 
@@ -320,7 +320,7 @@ namespace secs
 		std::vector<std::unique_ptr<Entity>> m_Entities;
 
 		mutable std::mutex m_DestructibleEntityMx;
-		std::vector<Uid> m_DestructibleEntityUIDs;
+		std::vector<Uid> m_DestructibleEntities;
 
 		std::vector<std::unique_ptr<Entity>> m_TeardownEntities;
 	};
