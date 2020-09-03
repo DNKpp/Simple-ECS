@@ -1,4 +1,3 @@
-
 //          Copyright Dominic Koepke 2020 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -14,7 +13,7 @@
 namespace secs
 {
 	using Uid = std::size_t;
-	
+
 	enum class EntityState
 	{
 		none,
