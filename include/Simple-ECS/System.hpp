@@ -13,6 +13,8 @@
 #include <optional>
 #include <queue>
 #include <stdexcept>
+#include <string>
+#include <typeindex>
 
 #include "Defines.hpp"
 #include "EmptyCallable.hpp"
@@ -60,6 +62,7 @@ namespace secs
 	template <class TComponent>
 	class SystemBase;
 }
+
 namespace secs::detail
 {
 	struct ComponentRtti
@@ -138,7 +141,7 @@ namespace secs
 	{
 	private:
 		friend struct detail::ComponentRtti;
-		
+
 		struct ComponentInfo
 		{
 			Entity* entity;
@@ -147,7 +150,7 @@ namespace secs
 
 	public:
 		using ComponentType = TComponent;
-		
+
 		SystemBase(const SystemBase&) = delete;
 		SystemBase& operator =(const SystemBase&) = delete;
 

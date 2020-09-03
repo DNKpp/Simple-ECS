@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cassert>
+#include <memory>
 #include <ranges>
 #include <stdexcept>
 #include <typeindex>
