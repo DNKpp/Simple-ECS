@@ -27,12 +27,12 @@ namespace secs
 		public std::runtime_error
 	{
 	public:
-		SystemError(const std::string& msg) :
+		explicit SystemError(const std::string& msg) :
 			std::runtime_error(msg)
 		{
 		}
 
-		SystemError(const char* msg) :
+		explicit SystemError(const char* msg) :
 			std::runtime_error(msg)
 		{
 		}
