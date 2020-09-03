@@ -23,9 +23,32 @@
 
 namespace secs
 {
+	/** \class World
+	 * \brief Class which stores unique Systems and manages Entities
+	 *
+	 * This class is used as the central point of this library. At first the user has to register each System he or she
+	 * wants to use in its program. You may register systems later on but that might result in unexpected behaviour and
+	 * is generally no thread-safe action. Systems are stored internally and each System type will be unique, thus
+	 * if you register a system type twice or more, you will override the previous stored object.
+	 *
+	 * <STRONG>Systems will be updated in order of their registration.</STRONG>
+	 *
+	 * Creating Entities is designed to be thread-safe and can therefore happen anywhere in the program. They may also be
+	 * registered for destruction anytime. Please keep in mind, that Entities will not directly be destroyed and will
+	 * be valid for at least one update cycle, so that each System can safely perform their cleanup processes.
+	 */
 	class World
 	{
 	public:
+		/**
+		 * \brief Registers System
+		 *
+		 * This function will register a new System object at this World. If there already exists a System of type TSystem,
+		 * it will be overridden.
+		 * \tparam TSystem Concrete System type
+		 * \param system Concrete System object.
+		 * \return Reference to the registered System object.
+		 */
 		template <System TSystem>
 		constexpr TSystem& registerSystem(TSystem&& system)
 		{
@@ -39,6 +62,14 @@ namespace secs
 			return static_cast<TSystem&>(*ref.system);
 		}
 
+		/**
+		 * \brief Searches for a specific System type
+		 *
+		 * This function searches for a specific System type and returns a const pointer to the caller.
+		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
+		 * \tparam TSystem System type to be found
+		 * \return Const pointer to the stored system object or nullptr if not found.
+		 */
 		template <System TSystem>
 		[[nodiscard]] const TSystem* findSystem() const noexcept
 		{
@@ -46,12 +77,29 @@ namespace secs
 			return itr != std::end(m_Systems) ? static_cast<TSystem*>(itr->system.get()) : nullptr;
 		}
 
+		/**
+		 * \brief Searches for a specific System type
+		 *
+		 * This function searches for a specific System type and returns a pointer to the caller.
+		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
+		 * \tparam TSystem System type to be found
+		 * \return Pointer to the stored system object or nullptr if not found.
+		 */
 		template <System TSystem>
 		[[nodiscard]] TSystem* findSystem() noexcept
 		{
 			return const_cast<TSystem*>(std::as_const(*this).findSystem<TSystem>());
 		}
 
+		/**
+		 * \brief Searches for a specific System type
+		 *
+		 * This function searches for a specific System type and returns a const reference to the caller.
+		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
+		 * \throws SystemError if a System object of type TSystem could not be found.
+		 * \tparam TSystem System type to be found
+		 * \return Const reference to the stored system object.
+		 */
 		template <System TSystem>
 		[[nodiscard]] const TSystem& system() const
 		{
@@ -61,12 +109,29 @@ namespace secs
 			throw SystemError("System not found: "s + typeid(TSystem).name());
 		}
 
+		/**
+		 * \brief Searches for a specific System type
+		 *
+		 * This function searches for a specific System type and returns a reference to the caller.
+		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
+		 * \throws SystemError if a System object of type TSystem could not be found.
+		 * \tparam TSystem System type to be found
+		 * \return Reference to the stored system object.
+		 */
 		template <System TSystem>
 		[[nodiscard]] TSystem& system()
 		{
 			return const_cast<TSystem&>(std::as_const(*this).system<TSystem>());
 		}
 
+		/**
+		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 *
+		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
+		 * If you need the concrete type of that System object it is generally safe to cast it to that.
+		 * \tparam TComponent Component type to be searched for
+		 * \return Const pointer to the corresponding SystemBase object or nullptr if not found.
+		 */
 		template <Component TComponent>
 		[[nodiscard]] const SystemBase<TComponent>* findSystemByComponentType() const noexcept
 		{
@@ -74,12 +139,29 @@ namespace secs
 			return itr != std::end(m_Systems) ? static_cast<SystemBase<TComponent>*>(itr->system.get()) : nullptr;
 		}
 
+		/**
+		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 *
+		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
+		 * If you need the concrete type of that System object it is generally safe to cast it to that.
+		 * \tparam TComponent Component type to be searched for
+		 * \return Pointer to the corresponding SystemBase object or nullptr if not found.
+		 */
 		template <Component TComponent>
 		[[nodiscard]] SystemBase<TComponent>* findSystemByComponentType() noexcept
 		{
 			return const_cast<SystemBase<TComponent>*>(std::as_const(*this).findSystemByComponentType<TComponent>());
 		}
 
+		/**
+		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 *
+		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
+		 * If you need the concrete type of that System object it is generally safe to cast it to that.
+		 * \throws SystemError if a related SystemBase object could not be found.
+		 * \tparam TComponent Component type to be searched for
+		 * \return Const reference to the stored SystemBase object related to the passed Component type.
+		 */
 		template <Component TComponent>
 		[[nodiscard]] const SystemBase<TComponent>& systemByComponentType() const
 		{
@@ -89,6 +171,15 @@ namespace secs
 			throw SystemError("System for component not found: "s + typeid(TComponent).name());
 		}
 
+		/**
+		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 *
+		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
+		 * If you need the concrete type of that System object it is generally safe to cast it to that.
+		 * \throws SystemError if a related SystemBase object could not be found.
+		 * \tparam TComponent Component type to be searched for
+		 * \return Reference to the stored SystemBase object related to the passed Component type.
+		 */
 		template <Component TComponent>
 		[[nodiscard]] SystemBase<TComponent>& systemByComponentType()
 		{
@@ -110,12 +201,29 @@ namespace secs
 			return *m_NewEntities.back();
 		}
 
+		/**
+		 * \brief Registers Entity for destruction
+		 *
+		 * This function registers a Entity for destruction. It does not perform any checks at this stage if a corresponding
+		 * Entity exists or if the given uid is already registered, thus it is generally safe to pass any possible uid.
+		 * \remark The Entity will not be directly destroyed, thus it is safe to use existing pointers and references to it during the next cycle.
+		 * \param uid Uid of the corresponding Entity which should be destructed.
+		 */
 		void destroyEntityLater(Uid uid)
 		{
 			std::scoped_lock lock{ m_DestructibleEntityMx };
 			m_DestructibleEntities.emplace_back(uid);
 		}
 
+		/**
+		 * \brief Searches for the corresponding Entity
+		 *
+		 * This function searches for the Entity with the passed uid. Due to the huge amount of different containers which
+		 * have to be searched, this is a quite expensive operation and should therefore be avoided if not necessary. Cache
+		 * pointers or references instead.
+		 * \param uid Entity Uid
+		 * \return Const pointer to the corresponding Entity or nullptr if not found.
+		 */
 		[[nodiscard]] const Entity* findEntity(Uid uid) const noexcept
 		{
 			std::scoped_lock entityLock{ m_EntityMx, m_NewEntityMx };
@@ -133,7 +241,7 @@ namespace secs
 			{
 				return &**itr;
 			}
-		
+
 			if (const auto itr = findEntityItr(m_TeardownEntities, uid); itr != std::end(m_TeardownEntities))
 			{
 				return &**itr;
@@ -141,11 +249,30 @@ namespace secs
 			return nullptr;
 		}
 
+		/**
+		 * \brief Searches for the corresponding Entity
+		 *
+		 * This function searches for the Entity with the passed uid. Due to the huge amount of different containers which
+		 * have to be searched, this is a quite expensive operation and should therefore be avoided if not necessary. Cache
+		 * pointers or references instead.
+		 * \param uid Entity Uid
+		 * \return Pointer to the corresponding Entity or nullptr if not found.
+		 */
 		[[nodiscard]] Entity* findEntity(Uid uid) noexcept
 		{
 			return const_cast<Entity*>(std::as_const(*this).findEntity(uid));
 		}
 
+		/**
+		 * \brief Searches for the corresponding Entity
+		 *
+		 * This function searches for the Entity with the passed uid. Due to the huge amount of different containers which
+		 * have to be searched, this is a quite expensive operation and should therefore be avoided if not necessary. Cache
+		 * pointers or references instead.
+		 * \throws EntityError if corresponding Entity could not be found.
+		 * \param uid Entity Uid
+		 * \return Const reference to the corresponding Entity.
+		 */
 		[[nodiscard]] const Entity& entity(Uid uid) const
 		{
 			if (const auto* ptr = findEntity(uid))
@@ -154,23 +281,52 @@ namespace secs
 			throw EntityError("Entity uid: "s + std::to_string(uid) + " not found: ");
 		}
 
+		/**
+		 * \brief Searches for the corresponding Entity
+		 *
+		 * This function searches for the Entity with the passed uid. Due to the huge amount of different containers which
+		 * have to be searched, this is a quite expensive operation and should therefore be avoided if not necessary. Cache
+		 * pointers or references instead.
+		 * \throws EntityError if corresponding Entity could not be found.
+		 * \param uid Entity Uid
+		 * \return Reference to the corresponding Entity.
+		 */
 		[[nodiscard]] Entity& entity(Uid uid)
 		{
 			return const_cast<Entity&>(std::as_const(*this).entity(uid));
 		}
 
+		/**
+		 * \brief Pre updates all Systems
+		 *
+		 * This function calls the preUpdate functions of every registered System, which may be used to perform necessary preparations
+		 * for the actual updating process.
+		 */
 		void preUpdate() noexcept
 		{
 			for (auto& storage : m_Systems)
 				storage.system->preUpdate();
 		}
 
+		/**
+		 * \brief Updates all Systems
+		 *
+		 * This function calls the update functions of every registered System.
+		 * \param delta Time delta between the previous and current update cycle
+		 */
 		void update(float delta) noexcept
 		{
 			for (auto& storage : m_Systems)
 				storage.system->update(delta);
 		}
 
+		/**
+		 * \brief Post updates all Systems
+		 *
+		 * This function calls the postUpdate functions of every registered System, which may be used to perform necessary finalization steps
+		 * for the current update process.
+		 * \remark In this function Entities with state teardown will be destructed and and other Entities may change their state.
+		 */
 		void postUpdate()
 		{
 			postUpdateSystems();
