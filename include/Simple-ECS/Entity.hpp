@@ -100,7 +100,7 @@ namespace secs
 			if (auto itr = findComponentInfo<TComponent>(m_ComponentInfos); itr != std::end(m_ComponentInfos))
 			{
 				assert(isValid(*itr));
-				return static_cast<const TComponent*>(itr->rtti->getComponentPtr(itr->systemPtr, itr->componentUid));
+				return static_cast<const TComponent*>(itr->rtti->findComponent(itr->systemPtr, itr->componentUid));
 			}
 			return nullptr;
 		}

@@ -67,7 +67,7 @@ namespace secs::detail
 		using DestroyFn_t = void(void*, Uid) noexcept;
 		using SetEntityFn_t = void(void*, Uid, Entity&) noexcept;
 		using EntityStateChangeFn_t = void(void*, Uid);
-		using GetComponentPtrFn_t = const void*(const void*, Uid) noexcept;
+		using FindComponentFn_t = const void*(const void*, Uid) noexcept;
 
 		template <class TComponent>
 		static void destroyImpl(void* targetSystem, Uid componentUid) noexcept
@@ -94,17 +94,17 @@ namespace secs::detail
 		}
 
 		template <class TComponent>
-		static const void* getComponentPtrImpl(const void* targetSystem, Uid componentUid) noexcept
+		static const void* findComponentImpl(const void* targetSystem, Uid componentUid) noexcept
 		{
 			assert(targetSystem);
 			auto& system = *static_cast<const SystemBase<TComponent>*>(targetSystem);
-			return static_cast<const void*>(system.getComponentPtr(componentUid));
+			return static_cast<const void*>(system.findComponent(componentUid));
 		}
 
 		DestroyFn_t* destroy;
 		SetEntityFn_t* setEntity;
 		EntityStateChangeFn_t* entityStateChanged;
-		GetComponentPtrFn_t* getComponentPtr;
+		FindComponentFn_t* findComponent;
 	};
 
 	template <class TComponent>
@@ -113,7 +113,7 @@ namespace secs::detail
 		&ComponentRtti::destroyImpl<TComponent>,
 		&ComponentRtti::setEntityImpl<TComponent>,
 		&ComponentRtti::entityStateChangedImpl<TComponent>,
-		&ComponentRtti::getComponentPtrImpl<TComponent>
+		&ComponentRtti::findComponentImpl<TComponent>
 	};
 
 	struct ComponentStorageInfo
@@ -174,7 +174,7 @@ namespace secs
 			return 0u < uid && uid <= std::size(m_Components) && m_Components[uid - 1u];
 		}
 
-		[[nodiscard]] constexpr const TComponent* getComponentPtr(Uid uid) const noexcept
+		[[nodiscard]] constexpr const TComponent* findComponent(Uid uid) const noexcept
 		{
 			if (0u < uid && uid <= std::size(m_Components))
 			{
@@ -184,35 +184,34 @@ namespace secs
 			return nullptr;
 		}
 
-		[[nodiscard]] constexpr TComponent* getComponentPtr(Uid uid) noexcept
+		[[nodiscard]] constexpr TComponent* findComponent(Uid uid) noexcept
 		{
-			return const_cast<TComponent*>(std::as_const(*this).getComponentPtr(uid));
+			return const_cast<TComponent*>(std::as_const(*this).findComponent(uid));
 		}
 
-		[[nodiscard]] constexpr const TComponent& getComponent(Uid uid) const noexcept
+		[[nodiscard]] constexpr const TComponent& component(Uid uid) const
 		{
-			assert(hasComponent(uid));
-			return m_Components[uid - 1u]->component;
+			if (hasComponent(uid))
+			{
+				return m_Components[uid - 1u]->component;
+			}
+			using namespace std::string_literals;
+			throw SystemError("System: \""s + typeid(*this).name() + "\" Component uid: " + std::to_string(uid) + " not found.");
 		}
 
-		[[nodiscard]] constexpr TComponent& getComponent(Uid uid) noexcept
+		[[nodiscard]] constexpr TComponent& component(Uid uid)
 		{
-			return const_cast<TComponent&>(std::as_const(*this).getComponent(uid));
-		}
-
-		[[nodiscard]] constexpr std::size_t componentCount() const noexcept
-		{
-			return std::size(m_Components) - std::count(std::begin(m_Components), std::end(m_Components), std::nullopt);
+			return const_cast<TComponent&>(std::as_const(*this).component(uid));
 		}
 
 		[[nodiscard]] constexpr std::size_t size() const noexcept
 		{
-			return std::size(m_Components);
+			return std::size(m_Components) - std::ranges::count_if(m_Components, [](const auto& component) { return !component; });
 		}
 
 		[[nodiscard]] constexpr bool empty() const noexcept
 		{
-			return std::empty(m_Components);
+			return std::empty(m_Components) || std::ranges::all_of(m_Components, [](const auto& component) { return !component; });
 		}
 
 		template <class TComponentAction = utils::EmptyCallable<>>
