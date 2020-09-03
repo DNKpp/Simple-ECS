@@ -12,7 +12,6 @@
 #include <memory>
 #include <mutex>
 #include <ranges>
-#include <shared_mutex>
 #include <string>
 #include <typeinfo>
 #include <type_traits>
@@ -119,9 +118,27 @@ namespace secs
 
 		[[nodiscard]] const Entity* findEntity(Uid uid) const noexcept
 		{
-			std::shared_lock entityLock{ m_EntityMx };
-			const auto itr = findEntityItr(m_Entities, uid);
-			return itr != std::end(m_Entities) ? &**itr : nullptr;
+			std::scoped_lock entityLock{ m_EntityMx, m_NewEntityMx };
+			if (const auto itr = findEntityItr(m_Entities, uid); itr != std::end(m_Entities))
+			{
+				return &**itr;
+			}
+
+			if (const auto itr = findEntityItr(m_InitializingEntities, uid); itr != std::end(m_InitializingEntities))
+			{
+				return &**itr;
+			}
+
+			if (const auto itr = findEntityItr(m_NewEntities, uid); itr != std::end(m_NewEntities))
+			{
+				return &**itr;
+			}
+		
+			if (const auto itr = findEntityItr(m_TeardownEntities, uid); itr != std::end(m_TeardownEntities))
+			{
+				return &**itr;
+			}
+			return nullptr;
 		}
 
 		[[nodiscard]] Entity* findEntity(Uid uid) noexcept
@@ -299,7 +316,7 @@ namespace secs
 
 		std::vector<std::unique_ptr<Entity>> m_InitializingEntities;
 
-		mutable std::shared_mutex m_EntityMx;
+		mutable std::mutex m_EntityMx;
 		std::vector<std::unique_ptr<Entity>> m_Entities;
 
 		mutable std::mutex m_DestructibleEntityMx;
