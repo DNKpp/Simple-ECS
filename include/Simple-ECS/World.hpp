@@ -63,7 +63,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches for a specific System type
+		 * \brief Queries for a specific System type
 		 *
 		 * This function searches for a specific System type and returns a const pointer to the caller.
 		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
@@ -78,7 +78,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches for a specific System type
+		 * \brief Queries for a specific System type
 		 *
 		 * This function searches for a specific System type and returns a pointer to the caller.
 		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
@@ -92,7 +92,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches for a specific System type
+		 * \brief Queries for a specific System type
 		 *
 		 * This function searches for a specific System type and returns a const reference to the caller.
 		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
@@ -110,7 +110,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches for a specific System type
+		 * \brief Queries for a specific System type
 		 *
 		 * This function searches for a specific System type and returns a reference to the caller.
 		 * \remark Please note, that the function only searches for concrete types and does lookup inheritances.
@@ -125,7 +125,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 * \brief Queries a SystemBase type which relates to the passed Component type
 		 *
 		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
 		 * If you need the concrete type of that System object it is generally safe to cast it to that.
@@ -140,7 +140,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 * \brief Queries a SystemBase type which relates to the passed Component type
 		 *
 		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
 		 * If you need the concrete type of that System object it is generally safe to cast it to that.
@@ -154,7 +154,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 * \brief Queries a SystemBase type which relates to the passed Component type
 		 *
 		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
 		 * If you need the concrete type of that System object it is generally safe to cast it to that.
@@ -172,7 +172,7 @@ namespace secs
 		}
 
 		/**
-		 * \brief Searches a SystemBase type which relates to the passed Component type
+		 * \brief Queries a SystemBase type which relates to the passed Component type
 		 *
 		 * This function searches for a specific SystemBase type which relates to the passed TComponent type.
 		 * If you need the concrete type of that System object it is generally safe to cast it to that.
@@ -186,6 +186,14 @@ namespace secs
 			return const_cast<SystemBase<TComponent>&>(std::as_const(*this).systemByComponentType<TComponent>());
 		}
 
+		/**
+		 * \brief Creates new Entity with specified Components
+		 *
+		 * A new Entity with one Component object for each of the passed Component types will be created. It is safe to use and store
+		 * the reference to the newly constructed Entity.
+		 * \tparam TComponent Indefinite amount of Component types
+		 * \return Returns a reference to the newly constructed Entity.
+		 */
 		template <Component... TComponent>
 		Entity& createEntity()
 		{
