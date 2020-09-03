@@ -43,6 +43,8 @@ namespace secs
 
 	class Entity
 	{
+		friend class World;
+		
 	public:
 		Entity(const Entity&) = delete;
 		Entity& operator =(const Entity&) = delete;
@@ -74,19 +76,6 @@ namespace secs
 		[[nodiscard]] constexpr EntityState state() const noexcept
 		{
 			return m_State;
-		}
-
-		using enum EntityState;
-		void changeState(EntityState state)
-		{
-			assert(static_cast<int>(m_State) < static_cast<int>(state));
-			m_State = state;
-
-			for (auto& info : m_ComponentInfos)
-			{
-				assert(isValid(info));
-				info.rtti->entityStateChanged(info.systemPtr, info.componentUid);
-			}
 		}
 
 		template <Component TComponent>
@@ -136,7 +125,7 @@ namespace secs
 
 	private:
 		Uid m_Uid = 0;
-		EntityState m_State = none;
+		EntityState m_State = EntityState::none;
 		std::vector<detail::ComponentStorageInfo> m_ComponentInfos;
 
 		template <class TComponent, class TContainer>
@@ -144,6 +133,18 @@ namespace secs
 		{
 			std::type_index expectedTypeIndex = typeid(std::remove_cvref_t<TComponent>);
 			return std::ranges::find(container, expectedTypeIndex, [](const detail::ComponentStorageInfo& info) { return info.componentTypeIndex; });
+		}
+
+		void changeState(EntityState state)
+		{
+			assert(static_cast<int>(m_State) < static_cast<int>(state));
+			m_State = state;
+
+			for (auto& info : m_ComponentInfos)
+			{
+				assert(isValid(info));
+				info.rtti->entityStateChanged(info.systemPtr, info.componentUid);
+			}
 		}
 
 		void setComponentEntity() noexcept
