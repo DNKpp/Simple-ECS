@@ -19,9 +19,8 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
 	add_executable(
 		test_simple_ecs
-		${CMAKE_CURRENT_SOURCE_DIR}/test/SystemTest.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/test/WorldTest.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
+		"${CMAKE_CURRENT_SOURCE_DIR}/test/Tests.cpp"
+		"${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp"
 	)
 
 	target_link_libraries(
