@@ -4,7 +4,7 @@
 
 ## Author
 Dominic Koepke  
-Mail: <DNKpp2011@gmail.com>
+Mail: [DNKpp2011@gmail.com](mailto:dnkpp2011@gmail.com)
 
 ## License
 
