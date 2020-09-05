@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 project(simple_ecs)
 
-option(GENERATE_DOCUMENTATION "generate the documentation files" ON)
+find_package(Doxygen)
+option(GENERATE_DOCUMENTATION "Create and install the HTML based API documentation (requires Doxygen)" ${DOXYGEN_FOUND})
 
 add_library(simple_ecs INTERFACE)
 target_include_directories(
@@ -26,14 +27,18 @@ if (GENERATE_DOCUMENTATION)
 
 		# request to configure the file
 		configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
-		message("Doxygen build started")
+
+		#SET(DOXYGEN_GENERATE_LATEX NO)
 
 		# note the option ALL which allows to build the docs together with the application
 		add_custom_target(doc_doxygen ALL
 			COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
-			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 			COMMENT "Generating API documentation with Doxygen"
-			VERBATIM )
+			VERBATIM
+		)
+
+		install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc)
 	else (DOXYGEN_FOUND)
 	  message("Doxygen need to be installed to generate the doxygen documentation")
 	endif (DOXYGEN_FOUND)
