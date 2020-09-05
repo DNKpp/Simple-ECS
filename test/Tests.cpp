@@ -59,8 +59,12 @@ TEST_CASE("World system managing tests", "[World]")
 
 	SECTION("entity construction")
 	{
+		REQUIRE(world.entityCount() == 0);
+		
 		auto& entity = world.createEntity<TestComponent>();
 		uid = entity.uid();
+
+		REQUIRE(world.entityCount() == 1);
 
 		REQUIRE(&entity == world.findEntity(uid));
 		REQUIRE(&entity == std::as_const(world).findEntity(uid));
@@ -104,14 +108,17 @@ TEST_CASE("World system managing tests", "[World]")
 		auto* entity = world.findEntity(uid);
 		REQUIRE(entity != nullptr);
 		REQUIRE(entity->uid() == uid);
+		REQUIRE(world.entityCount() == 1);
 
 		world.postUpdate(); // entity will set to teardown state
+		REQUIRE(world.entityCount() == 1);
 		REQUIRE(world.findEntity(uid) == entity);
 		REQUIRE(std::as_const(world).findEntity(uid) == entity);
 		REQUIRE_NOTHROW(world.entity(uid));
 		REQUIRE_NOTHROW(std::as_const(world).entity(uid));
 
 		world.postUpdate(); // entity will be deleted here
+		REQUIRE(world.entityCount() == 0);
 		REQUIRE(world.findEntity(uid) == nullptr);
 		REQUIRE(std::as_const(world).findEntity(uid) == nullptr);
 		REQUIRE_THROWS(world.entity(uid));

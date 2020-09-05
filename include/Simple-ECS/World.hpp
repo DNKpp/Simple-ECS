@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <iterator>
 #include <memory>
 #include <mutex>
@@ -206,6 +207,7 @@ namespace secs
 																std::vector<detail::ComponentStorageInfo>{ makeComponentStorageInfo(systemByComponentType<TComponent>())... }
 																)
 									);
+			++m_EntityCount;
 			return *m_NewEntities.back();
 		}
 
@@ -302,6 +304,15 @@ namespace secs
 		[[nodiscard]] Entity& entity(Uid uid)
 		{
 			return const_cast<Entity&>(std::as_const(*this).entity(uid));
+		}
+
+		/**
+		 * \brief Entity count
+		 * \return Returns amount of stored Entities.
+		 */
+		std::size_t entityCount() const noexcept
+		{
+			return m_EntityCount;
 		}
 
 		/**
@@ -445,6 +456,8 @@ namespace secs
 
 		void processEntityDestruction()
 		{
+			assert(std::size(m_TeardownEntities) <= m_EntityCount);
+			m_EntityCount -= std::size(m_TeardownEntities);
 			m_TeardownEntities.clear();
 
 			auto destructibleEntityUIDs = takeDestructibleEntityUIDs();
@@ -454,19 +467,24 @@ namespace secs
 			std::sort(std::begin(destructibleEntityUIDs), std::end(destructibleEntityUIDs));
 			destructibleEntityUIDs.erase(std::unique(std::begin(destructibleEntityUIDs), std::end(destructibleEntityUIDs)), std::end(destructibleEntityUIDs));
 
-			std::scoped_lock entityLock{ m_EntityMx };
-			m_TeardownEntities = std::move(m_Entities);
-
-			std::set_difference(
-								std::make_move_iterator(std::begin(m_TeardownEntities)),
-								std::make_move_iterator(std::end(m_TeardownEntities)),
-								std::begin(destructibleEntityUIDs),
-								std::end(destructibleEntityUIDs),
-								std::back_inserter(m_Entities),
+			std::scoped_lock entityLock{ m_EntityMx, m_NewEntityMx };
+			auto moveDestructibleEntities = [&teardownEntities = m_TeardownEntities](auto& entityRange, const auto& destructibleIds)
+			{
+				std::set_intersection(
+								std::make_move_iterator(std::begin(entityRange)),
+								std::make_move_iterator(std::end(entityRange)),
+								std::begin(destructibleIds),
+								std::end(destructibleIds),
+								std::back_inserter(teardownEntities),
 								EntityLessByUid{}
 								);
+				entityRange.erase(std::remove(std::begin(entityRange), std::end(entityRange), nullptr), std::end(entityRange));
+			};
 
-			m_TeardownEntities.erase(std::remove(std::begin(m_TeardownEntities), std::end(m_TeardownEntities), nullptr), std::end(m_TeardownEntities));
+			moveDestructibleEntities(m_Entities, destructibleEntityUIDs);
+			moveDestructibleEntities(m_InitializingEntities, destructibleEntityUIDs);
+			moveDestructibleEntities(m_NewEntities, destructibleEntityUIDs);
+
 			for (auto& entity : m_TeardownEntities)
 			{
 				assert(entity);
@@ -474,6 +492,7 @@ namespace secs
 			}
 		}
 
+		std::atomic<std::size_t> m_EntityCount{ 0 };
 		Uid m_NextUID = 1;
 		mutable std::mutex m_NewEntityMx;
 		std::vector<std::unique_ptr<Entity>> m_NewEntities;
