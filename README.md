@@ -1,5 +1,7 @@
 # Simple-ECS C++20 library
-![Build & Run Test](https://github.com/DNKpp/Simple-ECS/workflows/Build%20&%20Run%20Test/badge.svg)
+![Build & Test - Windows](https://github.com/DNKpp/Simple-ECS/workflows/Build%20&%20Test%20-%20Windows/badge.svg)
+![Build & Test - Linux](https://github.com/DNKpp/Simple-ECS/workflows/Build%20&%20Test%20-%20Linux/badge.svg)
+
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/5ba6d2c830154af788208602cc45a65a)](https://www.codacy.com/manual/DNKpp/Simple-ECS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=DNKpp/Simple-ECS&amp;utm_campaign=Badge_Grade)
 
 ## Author
