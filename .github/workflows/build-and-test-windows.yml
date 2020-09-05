@@ -1,0 +1,40 @@
+name: Build & Test - Windows
+
+on: [push]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: jwlawson/actions-setup-cmake@v1.3
+
+    - name: Configure & Build (MSVC)
+      run: |
+        cmake . -Bbuild_msvc -DGENERATE_DOCUMENTATION=OFF
+        cmake --build build_msvc
+    - name: Test
+      run:
+        cmake --build build_msvc --target RUN_TESTS
+
+    - name: Configure & Build (Clang-Cl)
+      run: |
+        cmake . -Bbuild_clang-cl -T clangcl -DGENERATE_DOCUMENTATION=OFF
+        cmake --build build_clang-cl
+    - name: Test (Clang-Cl)
+      run:
+        cmake --build build_clang-cl --target RUN_TESTS
+
+#  build-macOS:
+#    runs-on: macos-latest
+#    steps:
+#    - uses: actions/checkout@v2
+#    - uses: jwlawson/actions-setup-cmake@v1.3
+#    - uses: seanmiddleditch/gha-setup-ninja@master
+#    - name: Configure & Build (AppleClang)
+#      run: |
+#        cmake . -Bbuild_apple_clang -G "Ninja Multi-Config"
+#        cmake --build build_apple_clang
+#    - name: Test (AppleClang)
+#      run: 
+#        cmake --build build_apple_clang --target test
