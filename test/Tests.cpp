@@ -13,7 +13,7 @@
 using namespace secs::test;
 
 secs::World world;
-auto& testSystem = world.registerSystem(TestSystem{});
+auto& testSystem = world.registerSystem<TestSystem>();
 secs::Uid uid = 0;
 
 TEST_CASE("World system managing tests", "[World]")

@@ -44,23 +44,27 @@ namespace secs
 		/**
 		 * \brief Registers System
 		 *
-		 * This function will register a new System object at this World. If there already exists a System of type TSystem,
+		 * This function will create and register a new System object in place at this World. If there already exists a System of type TSystem,
 		 * it will be overridden.
-		 * \tparam TSystem Concrete System type
-		 * \param system Concrete System object.
+		 * \tparam TSystem Concrete System type. Needs to be explicitly specified.
+		 * \tparam TArgs Constructor parameter types.
+		 * \param args TSystem constructor parameters.
 		 * \return Reference to the registered System object.
 		 */
-		template <System TSystem>
-		constexpr TSystem& registerSystem(TSystem&& system)
+		template <System TSystem, class... TArgs>
+		constexpr TSystem& registerSystem(TArgs&&... args)
 		{
-			if (auto itr = findSystemStorage<TSystem>(*this);
-				itr != std::end(m_Systems))
+			auto system = std::make_unique<TSystem>(std::forward<TArgs>(args)...);
+			auto& ref = *system;
+			if (auto itr = findSystemStorage<TSystem>(*this); itr != std::end(m_Systems))
 			{
-				*itr = { typeid(TSystem), typeid(typename TSystem::ComponentType), std::forward<TSystem>(system) };
-				return static_cast<TSystem&>(*itr->system);
+				*itr = { typeid(TSystem), typeid(typename TSystem::ComponentType), std::move(system) };
 			}
-			auto& ref = m_Systems.emplace_back(typeid(TSystem), typeid(typename TSystem::ComponentType), std::forward<TSystem>(system));
-			return static_cast<TSystem&>(*ref.system);
+			else
+			{
+				m_Systems.emplace_back(typeid(TSystem), typeid(typename TSystem::ComponentType), std::move(system));
+			}
+			return ref;
 		}
 
 		/**
@@ -362,16 +366,14 @@ namespace secs
 			std::type_index componentType;
 			std::unique_ptr<ISystem> system;
 
-			template <class TSystem>
-			constexpr SystemStorage(std::type_index type_, std::type_index componentType_, TSystem&& system_) :
+			SystemStorage(std::type_index type_, std::type_index componentType_, std::unique_ptr<ISystem> system_) :
 				type{ type_ },
 				componentType{ componentType_ },
-				system{ std::make_unique<std::remove_cvref_t<TSystem>>(std::forward<TSystem>(system_)) }
+				system{ std::move(system_) }
 			{
+				assert(system != nullptr);
 			}
 		};
-
-		std::vector<SystemStorage> m_Systems;
 
 		template <class TSystem>
 		detail::ComponentStorageInfo makeComponentStorageInfo(TSystem& system)
@@ -491,6 +493,8 @@ namespace secs
 				entity->changeState(EntityState::teardown);
 			}
 		}
+
+		std::vector<SystemStorage> m_Systems;
 
 		std::atomic<std::size_t> m_EntityCount{ 0 };
 		Uid m_NextUID = 1;
