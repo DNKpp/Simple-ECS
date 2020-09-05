@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "Simple-ECS/Concepts.hpp"
+#include "Simple-ECS/Defines.hpp"
 #include "Simple-ECS/Entity.hpp"
 #include "Simple-ECS/System.hpp"
 #include "Simple-ECS/World.hpp"
