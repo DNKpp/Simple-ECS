@@ -410,7 +410,7 @@ namespace secs
 		}
 
 		template <class TContainer>
-		constexpr static auto findEntityItr(TContainer& container, Uid uid) noexcept -> decltype(std::begin(container))
+		static auto findEntityItr(TContainer& container, Uid uid) noexcept -> decltype(std::begin(container))
 		{
 			if (auto itr = std::lower_bound(std::begin(container), std::end(container), uid, EntityLessByUid{});
 				itr != std::end(container) && (*itr)->uid() == uid)
