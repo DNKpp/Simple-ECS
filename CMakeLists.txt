@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
+
+include(CMakeDependentOption)
+
 project(simple_ecs)
 
 find_package(Doxygen)
-option(GENERATE_DOCUMENTATION "Create and install the HTML based API documentation (requires Doxygen)" ${DOXYGEN_FOUND})
+CMAKE_DEPENDENT_OPTION(SIMPLE_ECS_GENERATE_DOCS "Create and install the HTML based API documentation (requires Doxygen)" ON
+	"${DOXYGEN_FOUND}" ON
+)
 
 add_library(simple_ecs INTERFACE)
 target_include_directories(
@@ -17,7 +22,7 @@ target_compile_features(
 	cxx_std_20
 )
 
-if (GENERATE_DOCUMENTATION)
+if (SIMPLE_ECS_GENERATE_DOCS)
 	# check if Doxygen is installed
 	find_package(Doxygen)
 	if (DOXYGEN_FOUND)

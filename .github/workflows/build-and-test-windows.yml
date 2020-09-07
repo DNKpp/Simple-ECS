@@ -11,7 +11,7 @@ jobs:
 
     - name: Configure & Build (MSVC)
       run: |
-        cmake . -Bbuild_msvc -DGENERATE_DOCUMENTATION=OFF
+        cmake . -Bbuild_msvc -DSIMPLE_ECS_GENERATE_DOCS=OFF
         cmake --build build_msvc
     - name: Test
       run:
@@ -19,7 +19,7 @@ jobs:
 
     - name: Configure & Build (Clang-Cl)
       run: |
-        cmake . -Bbuild_clang-cl -T clangcl -DGENERATE_DOCUMENTATION=OFF
+        cmake . -Bbuild_clang-cl -T clangcl -DSIMPLE_ECS_GENERATE_DOCS=OFF
         cmake --build build_clang-cl
     - name: Test (Clang-Cl)
       run:
