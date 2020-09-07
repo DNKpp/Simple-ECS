@@ -6,7 +6,7 @@ project(simple_ecs)
 
 find_package(Doxygen)
 CMAKE_DEPENDENT_OPTION(SIMPLE_ECS_GENERATE_DOCS "Create and install the HTML based API documentation (requires Doxygen)" ON
-	"${DOXYGEN_FOUND}" ON
+	"DOXYGEN_FOUND" ON
 )
 
 add_library(simple_ecs INTERFACE)
